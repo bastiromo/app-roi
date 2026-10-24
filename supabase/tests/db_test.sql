@@ -231,6 +231,17 @@ select pg_temp.assert((select count(*) from invitations) >= 3, 'el administrador
 select pg_temp.must_fail($q$insert into invitations (email) values ('amiga@example.com')$q$, 'invitación pendiente duplicada');
 select pg_temp.must_fail($q$update invitations set used_at = now()$q$, 'marcar invitación como usada a mano');
 
+-- Dispositivos recordados
+insert into trusted_devices (token_hash, label) values (repeat('a', 64), 'iPhone');
+insert into trusted_devices (token_hash, label, expires_at) values (repeat('b', 64), 'Viejo', now() - interval '1 minute');
+select pg_temp.assert((select check_trusted_device(repeat('a', 64))), 'dispositivo recordado vigente');
+select pg_temp.assert((select last_used_at is not null from trusted_devices where token_hash = repeat('a', 64)), 'registra último uso');
+select pg_temp.assert(not (select check_trusted_device(repeat('b', 64))), 'dispositivo vencido no sirve');
+select pg_temp.assert(not (select check_trusted_device(repeat('c', 64))), 'token desconocido no sirve');
+select pg_temp.must_fail($q$insert into trusted_devices (token_hash, expires_at) values (repeat('d', 64), now() + interval '90 days')$q$,
+                         'recordar más de 30 días');
+select pg_temp.must_fail($q$update trusted_devices set expires_at = now() + interval '1 year'$q$, 'extender un dispositivo a mano');
+
 -- Auditoría y aislamiento
 update expenses set description = 'editado' where external_ref = 'A-1';
 select pg_temp.assert(
@@ -245,6 +256,8 @@ select pg_temp.assert((select count(*) from expenses) = 0 and (select count(*) f
                       and (select count(*) from audit_log where user_id <> auth.uid()) = 0
                       and (select count(*) from firms) = 11, 'otro usuario solo ve sus propios datos (RLS)');
 select pg_temp.assert(not (select is_admin()) and (select count(*) from invitations) = 0, 'no administrador no ve invitaciones');
+select pg_temp.assert(not (select check_trusted_device(repeat('a', 64))) and (select count(*) from trusted_devices) = 0,
+                      'el dispositivo recordado de otro usuario no sirve ni se ve');
 select pg_temp.must_fail($q$insert into invitations (email) values ('x@example.com')$q$, 'no administrador no puede invitar');
 select pg_temp.must_fail(format($q$insert into firms (user_id, name) values (%L, 'intrusa')$q$,
   '11111111-1111-1111-1111-111111111111'), 'escribir filas de otro usuario');

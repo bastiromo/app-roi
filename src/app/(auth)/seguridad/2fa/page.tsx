@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, Field, Notice } from "@/components/ui";
+import { Button, Check, Field, Notice } from "@/components/ui";
+import { rememberThisDevice } from "../../actions";
 import { createClient } from "@/lib/supabase/client";
 
 type Enrollment = { factorId: string; qr: string; secret: string };
@@ -36,13 +37,16 @@ export default function EnrollTwoFactorPage() {
     if (!enrollment) return;
     setBusy(true);
     setError("");
-    const code = String(new FormData(e.currentTarget).get("code")).replace(/\s/g, "");
+    const form = new FormData(e.currentTarget);
+    const code = String(form.get("code")).replace(/\s/g, "");
+    const remember = form.get("remember") === "on";
     const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId: enrollment.factorId, code });
     if (error) {
       setError("El código no coincide. Revisa que escaneaste el código QR de esta pantalla.");
       setBusy(false);
       return;
     }
+    if (remember) await rememberThisDevice();
     router.replace("/");
     router.refresh();
   }
@@ -68,6 +72,7 @@ export default function EnrollTwoFactorPage() {
       ) : (
         !error && <p className="text-sm text-ink-3">Preparando código QR…</p>
       )}
+      <Check name="remember" label="Recordar este dispositivo por 30 días" hint="No te pediremos el código aquí durante 30 días. No lo marques en un equipo compartido." defaultChecked />
       {error && <Notice tone="error">{error}</Notice>}
       <Button type="submit" disabled={busy || !enrollment} className="w-full">
         {busy ? "Activando…" : "Activar verificación"}

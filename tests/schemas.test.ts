@@ -108,3 +108,15 @@ describe("payouts", () => {
     expect(payoutSchema.safeParse({ ...base, status: "paid", fx_usd_clp: "950", receipt_mode: "actual" }).success).toBe(false));
   it("solicitado no exige dólar", () => expect(payoutSchema.safeParse({ ...base, status: "requested" }).success).toBe(true));
 });
+
+import { deviceLabel, sha256Hex } from "../src/lib/trusted-device";
+
+describe("dispositivos recordados", () => {
+  it.each([
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "iPhone · Safari"],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36", "Windows · Chrome"],
+    ["Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36", "Android · Chrome"],
+    ["", "Dispositivo"],
+  ])("%s → %s", (ua, label) => expect(deviceLabel(ua)).toBe(label));
+  it("sha256", async () => expect(await sha256Hex("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"));
+});

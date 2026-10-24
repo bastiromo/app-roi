@@ -118,6 +118,16 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
     expect((await db.from("invitations").delete().eq("id", ins.data!.id)).error).toBeNull();
   });
 
+  it("dispositivos recordados", async () => {
+    const hash = "e".repeat(64);
+    expect((await db.from("trusted_devices").insert({ token_hash: hash, label: "Test" })).error).toBeNull();
+    expect((await db.rpc("check_trusted_device", { p_hash: hash })).data).toBe(true);
+    expect((await db.rpc("check_trusted_device", { p_hash: "f".repeat(64) })).data).toBe(false);
+    expect((await db.from("trusted_devices").select("id,token_hash,label,created_at,expires_at,last_used_at")).error).toBeNull();
+    expect((await db.rpc("db_now")).error).toBeNull();
+    expect((await db.from("trusted_devices").delete().eq("token_hash", hash)).error).toBeNull();
+  });
+
   it("resumen: vista de flujos", async () => {
     const { data, error } = await db.from("cash_flows").select(Q.flowsSummary);
     expect(error).toBeNull();

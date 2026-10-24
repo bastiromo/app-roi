@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LedgerMark } from "./ledger-mark";
@@ -78,6 +79,9 @@ export function MobileMenu({ email, signOut, admin = false }: { email: string; s
             </div>
             <form action={signOut} className="mt-2 border-t border-line px-2 pt-4">
               <p className="truncate text-xs text-ink-3">{email}</p>
+              <Link href="/dispositivos" className="mt-1 block text-sm text-ink-2 hover:text-ink">
+                Dispositivos recordados
+              </Link>
               <button className="mt-1 text-sm text-ink-2 hover:text-ink">Cerrar sesión</button>
             </form>
           </div>

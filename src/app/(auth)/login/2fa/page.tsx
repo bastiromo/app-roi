@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Field, Notice } from "@/components/ui";
+import { Button, Check, Field, Notice } from "@/components/ui";
+import { rememberThisDevice } from "../../actions";
 import { createClient } from "@/lib/supabase/client";
 
 export default function TwoFactorPage() {
@@ -15,7 +16,9 @@ export default function TwoFactorPage() {
     setBusy(true);
     setError("");
     const supabase = createClient();
-    const code = String(new FormData(e.currentTarget).get("code")).replace(/\s/g, "");
+    const form = new FormData(e.currentTarget);
+    const code = String(form.get("code")).replace(/\s/g, "");
+    const remember = form.get("remember") === "on";
     const { data } = await supabase.auth.mfa.listFactors();
     const factor = data?.totp[0];
     if (!factor) {
@@ -28,6 +31,7 @@ export default function TwoFactorPage() {
       setBusy(false);
       return;
     }
+    if (remember) await rememberThisDevice();
     router.replace("/");
     router.refresh();
   }
@@ -37,6 +41,7 @@ export default function TwoFactorPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Código de verificación</h1>
       <p className="text-sm text-ink-2">Escribe el código de 6 dígitos de tu app de autenticación.</p>
       <Field label="Código" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus />
+      <Check name="remember" label="Recordar este dispositivo por 30 días" hint="No te pediremos el código aquí durante 30 días. No lo marques en un equipo compartido." defaultChecked />
       {error && <Notice tone="error">{error}</Notice>}
       <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Verificando…" : "Verificar"}

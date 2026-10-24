@@ -34,7 +34,7 @@ function LoginForm() {
       setBusy(false);
       return;
     }
-    router.replace("/login/2fa");
+    router.replace("/"); // el proxy pide el código solo si este dispositivo no está recordado
     router.refresh();
   }
 

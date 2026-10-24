@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LedgerMark } from "@/components/ledger-mark";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -29,6 +30,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         <form action={signOut} className="mt-3 px-2">
           <p className="truncate text-xs text-ink-3" title={user.email}>{user.email}</p>
+          <Link href="/dispositivos" className="mt-1 block text-sm text-ink-2 hover:text-ink">
+            Dispositivos recordados
+          </Link>
           <button className="mt-1 text-sm text-ink-2 hover:text-ink">Cerrar sesión</button>
         </form>
       </aside>

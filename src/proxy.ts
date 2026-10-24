@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { isConfigured, SUPABASE_KEY, SUPABASE_URL } from "@/lib/env";
+import { isTrustedDevice, TRUST_COOKIE } from "@/lib/trusted-device";
 
 /**
  * Se ejecuta antes de cada página:
@@ -8,7 +9,7 @@ import { isConfigured, SUPABASE_KEY, SUPABASE_URL } from "@/lib/env";
  *  2. Sin sesión → /login.
  *  3. (El acceso por invitación lo controla la base de datos.)
  *  4. Sin 2FA configurado → /seguridad/2fa (obligatorio).
- *  5. 2FA configurado pero no verificado en esta sesión → /login/2fa.
+ *  5. 2FA configurado pero no verificado en esta sesión ni dispositivo recordado → /login/2fa.
  */
 const PUBLIC_PATHS = ["/login", "/registro", "/configuracion-pendiente"];
 
@@ -51,7 +52,10 @@ export async function proxy(request: NextRequest) {
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   const hasFactor = aal?.nextLevel === "aal2";
-  const verified = aal?.currentLevel === "aal2";
+  // Verificado = código ingresado en esta sesión, o dispositivo recordado (≤ 30 días)
+  const verified =
+    aal?.currentLevel === "aal2" ||
+    (hasFactor && (await isTrustedDevice(supabase, request.cookies.get(TRUST_COOKIE)?.value)));
 
   if (!hasFactor && path !== "/seguridad/2fa") return redirect("/seguridad/2fa");
   if (hasFactor && !verified && path !== "/login/2fa") return redirect("/login/2fa");
