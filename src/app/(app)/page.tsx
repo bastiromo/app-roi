@@ -3,6 +3,7 @@ import { summarizeFlows, type FlowRow } from "@/domain/flows";
 import type { Decimal } from "@/domain/money";
 import { requireUser } from "@/lib/auth";
 import { formatMoney, formatPct } from "@/lib/format";
+import { Q } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Resumen" };
 
@@ -12,7 +13,7 @@ export default async function DashboardPage() {
   const [{ data: flows, error }, { count: activeAccounts }] = await Promise.all([
     supabase
       .from("cash_flows")
-      .select("flow_type,direction,firm_id,is_estimated,amount_usd::text,amount_clp::text")
+      .select(Q.flowsSummary)
       .returns<FlowRow[]>(),
     supabase.from("accounts").select("id", { count: "exact", head: true }).eq("status", "activa").is("deleted_at", null),
   ]);

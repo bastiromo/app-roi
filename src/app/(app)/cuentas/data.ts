@@ -1,5 +1,6 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
+import { Q } from "@/lib/queries";
 
 export interface AccountRow {
   id: string;
@@ -28,8 +29,7 @@ async function attachOrigins(supabase: Awaited<ReturnType<typeof requireUser>>["
   return rows.map((r) => ({ ...r, origin: r.origin_account_id ? (byId.get(r.origin_account_id) ?? null) : null }));
 }
 
-export const ACCOUNT_COLUMNS =
-  "id,firm_id,label,external_id,plan_name,nominal_size::text,phase,status,origin_account_id,opened_on,closed_on,notes,firms(name)";
+export const ACCOUNT_COLUMNS = Q.accounts;
 
 export async function listAccounts(filter: { firm?: string; status?: string } = {}): Promise<AccountRow[]> {
   const { supabase } = await requireUser();
@@ -47,7 +47,7 @@ export async function getAccount(id: string) {
     supabase.from("accounts").select(ACCOUNT_COLUMNS).eq("id", id).is("deleted_at", null).returns<AccountRow[]>().maybeSingle(),
     supabase
       .from("account_status_history")
-      .select("phase,status,changed_at")
+      .select(Q.statusHistory)
       .eq("account_id", id)
       .order("changed_at", { ascending: false })
       .returns<{ phase: AccountRow["phase"]; status: AccountRow["status"]; changed_at: string }[]>(),

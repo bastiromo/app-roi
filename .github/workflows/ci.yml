@@ -36,3 +36,45 @@ jobs:
         env:
           DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/postgres
         run: bash scripts/test-db.sh
+
+  api:
+    # Prueba las consultas reales de la app contra PostgREST (la misma API que usa Supabase).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgres://postgres:postgres@localhost:5432/postgres
+      POSTGREST_URL: http://localhost:3000
+      POSTGREST_JWT_SECRET: ci-only-secret-at-least-32-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Esquema + datos de prueba
+        run: |
+          psql "$PGURL" -qX -v ON_ERROR_STOP=1 -f supabase/tests/auth_stub.sql
+          for f in supabase/migrations/*.sql; do psql "$PGURL" -qX -v ON_ERROR_STOP=1 -f "$f"; done
+          psql "$PGURL" -qX -v ON_ERROR_STOP=1 -f scripts/ci-api-setup.sql
+      - name: Iniciar PostgREST
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo PostgREST/postgrest --pattern '*linux-static-x86-64.tar.xz' --dir /tmp/pgrst
+          tar -xJf /tmp/pgrst/*.tar.xz -C /tmp/pgrst
+          PGRST_DB_URI=postgres://authenticator:authenticator@localhost:5432/postgres \
+          PGRST_DB_SCHEMAS=public PGRST_DB_ANON_ROLE=anon PGRST_JWT_SECRET="$POSTGREST_JWT_SECRET" \
+            nohup /tmp/pgrst/postgrest > /tmp/pgrst.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf "$POSTGREST_URL/" >/dev/null && break; sleep 1; done
+          curl -sf "$POSTGREST_URL/" >/dev/null || (cat /tmp/pgrst.log; exit 1)
+      - run: npx vitest run tests/api.test.ts
+      - if: failure()
+        run: cat /tmp/pgrst.log

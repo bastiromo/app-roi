@@ -1,5 +1,6 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
+import { Q } from "@/lib/queries";
 
 export interface ExpenseRow {
   id: string;
@@ -22,9 +23,7 @@ export interface ExpenseRow {
   accounts: { label: string } | null;
 }
 
-const COLUMNS =
-  "id,kind,refund_of_id,status,occurred_on,firm_id,account_id,category,description,amount::text,currency,usd_rate::text," +
-  "fx_usd_clp::text,fx_source,external_ref,tx_hash,firms(name),accounts(label)";
+const COLUMNS = Q.expenses;
 
 export interface ExpenseFilter {
   empresa?: string;
@@ -60,7 +59,7 @@ export async function expenseFormOptions() {
       .returns<{ id: string; name: string }[]>(),
     supabase.from("accounts").select("id,firm_id,label").is("deleted_at", null).order("label")
       .returns<{ id: string; firm_id: string; label: string }[]>(),
-    supabase.from("expenses").select("id,firm_id,occurred_on,amount::text,currency,description,category")
+    supabase.from("expenses").select(Q.refundableCosts)
       .eq("kind", "cost").eq("status", "paid").is("deleted_at", null).order("occurred_on", { ascending: false }).limit(300)
       .returns<{ id: string; firm_id: string | null; occurred_on: string; amount: string; currency: string; description: string | null; category: string }[]>(),
   ]);

@@ -1,5 +1,6 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
+import { Q } from "@/lib/queries";
 
 export interface FirmRow {
   id: string;
@@ -17,9 +18,7 @@ export interface FirmRow {
 }
 
 // Montos como texto: PostgREST devolvería numeric como número de coma flotante.
-export const FIRM_COLUMNS =
-  "id,name,website,default_trader_share_pct::text,split_tier_threshold::text,split_tier_pct_before::text," +
-  "default_transfer_fee::text,transfer_fee_is_estimate,is_configured,is_active,payout_rules_notes,notes";
+export const FIRM_COLUMNS = Q.firms;
 
 export async function listFirms(): Promise<FirmRow[]> {
   const { supabase } = await requireUser();
