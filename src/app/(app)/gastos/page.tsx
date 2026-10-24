@@ -12,7 +12,7 @@ const amountFmt = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 2 });
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ empresa?: string; categoria?: string; desde?: string; hasta?: string; guardado?: string }>;
+  searchParams: Promise<{ empresa?: string; categoria?: string; desde?: string; hasta?: string; guardado?: string; cuentas?: string }>;
 }) {
   const sp = await searchParams;
   const [rows, { firms }] = await Promise.all([listExpenses(sp), expenseFormOptions()]);
@@ -35,7 +35,8 @@ export default async function ExpensesPage({
         action={<LinkButton href="/gastos/nuevo">Registrar gasto</LinkButton>}
       />
       <ExpensesList
-        saved={Boolean(sp.guardado)}
+        saved={Number(sp.guardado ?? 0) || 0}
+        createdAccounts={sp.cuentas === "1"}
         filter={sp}
         firms={firms}
         totals={{ usd: formatMoney(total.usd, "usd"), clp: formatMoney(total.clp, "clp"), count: counted }}

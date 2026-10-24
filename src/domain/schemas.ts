@@ -192,8 +192,35 @@ export const expenseSchema = z
     external_ref: optionalText,
     tx_hash: optionalText,
     confirm_duplicate: checkbox,
+    // Varias compras iguales (solo al crear)
+    quantity: z
+      .string()
+      .optional()
+      .transform((v) => (v && v.trim() !== "" ? Number(v) : 1))
+      .pipe(z.number().int("La cantidad debe ser un número entero.").min(1, "Mínimo 1.").max(50, "Máximo 50 de una vez.")),
+    create_accounts: checkbox,
+    account_prefix: optionalText,
+    account_start: z
+      .string()
+      .optional()
+      .transform((v) => (v && v.trim() !== "" ? Number(v) : 1))
+      .pipe(z.number().int("Debe ser un número entero.").min(0)),
   })
   .superRefine((x, ctx) => {
+    const refs = splitRefs(x.external_ref);
+    if (x.quantity > 1) {
+      if (x.kind === "refund") ctx.addIssue({ code: "custom", path: ["quantity"], message: "Los reembolsos se registran de a uno." });
+      if (refs.length > 0 && refs.length !== x.quantity) {
+        ctx.addIssue({ code: "custom", path: ["external_ref"], message: `Escribe ${x.quantity} números de orden (uno por compra) o déjalo vacío. Escribiste ${refs.length}.` });
+      }
+      if (x.tx_hash) ctx.addIssue({ code: "custom", path: ["tx_hash"], message: "El hash identifica una sola transacción: déjalo vacío al registrar varias." });
+    } else if (refs.length > 1) {
+      ctx.addIssue({ code: "custom", path: ["external_ref"], message: "Un solo número de orden por gasto." });
+    }
+    if (x.create_accounts && x.quantity >= 1) {
+      if (!x.firm_id) ctx.addIssue({ code: "custom", path: ["firm_id"], message: "Para crear las cuentas, elige la empresa." });
+      if (!x.account_prefix) ctx.addIssue({ code: "custom", path: ["account_prefix"], message: "Escribe cómo se llamarán las cuentas." });
+    }
     if (x.kind === "refund" && !x.refund_of_id) {
       ctx.addIssue({ code: "custom", path: ["refund_of_id"], message: "Elige el gasto que te reembolsaron." });
     }
@@ -201,11 +228,29 @@ export const expenseSchema = z
       ctx.addIssue({ code: "custom", path: ["account_id"], message: "Para vincular una cuenta, elige primero la empresa." });
     }
   })
-  .transform(({ confirm_duplicate, ...x }) => ({
+  .transform(({ confirm_duplicate, quantity, create_accounts, account_prefix, account_start, ...x }) => ({
     data: {
       ...x,
       refund_of_id: x.kind === "refund" ? x.refund_of_id : null,
       usd_rate: x.currency === "USDT" || x.currency === "USDC" ? (x.usd_rate ?? "1") : null,
     },
     confirmDuplicate: confirm_duplicate,
+    batch: {
+      quantity,
+      refs: splitRefs(x.external_ref),
+      accounts: create_accounts && !x.account_id ? { prefix: account_prefix ?? "", start: account_start } : null,
+    },
   }));
+
+/** "123, 456 789" → ["123","456","789"] */
+export function splitRefs(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(/[\s,;]+/)
+    .map((r) => r.replace(/^#/, "").trim())
+    .filter(Boolean);
+}
+
+/** Nombres de cuentas para una compra múltiple: "Tradeify 50K" desde 1 → "Tradeify 50K 1", "Tradeify 50K 2"… */
+export function batchAccountLabels(prefix: string, start: number, quantity: number): string[] {
+  return Array.from({ length: quantity }, (_, i) => `${prefix.trim()} ${start + i}`);
+}

@@ -33,7 +33,8 @@ export function ExpensesList(props: {
   firms: { id: string; name: string }[];
   filter: { empresa?: string; categoria?: string; desde?: string; hasta?: string };
   totals: { usd: string; clp: string; count: number };
-  saved: boolean;
+  saved: number;
+  createdAccounts: boolean;
 }) {
   const { rows, firms, filter, totals } = props;
   const router = useRouter();
@@ -76,7 +77,12 @@ export function ExpensesList(props: {
 
   return (
     <div className="space-y-6">
-      {props.saved && !result && <Notice tone="success">Guardado.</Notice>}
+      {props.saved > 0 && !result && (
+        <Notice tone="success">
+          {props.saved === 1 ? "Gasto guardado." : `${props.saved} gastos registrados.`}
+          {props.createdAccounts ? ` También se crearon ${props.saved === 1 ? "la cuenta" : `${props.saved} cuentas`} de evaluación.` : ""}
+        </Notice>
+      )}
       {result && (
         <div
           role={result.ok ? "status" : "alert"}
@@ -184,8 +190,8 @@ export function ExpensesList(props: {
                 <th className="px-4 py-3 font-medium">Categoría</th>
                 <th className="px-4 py-3 text-right font-medium">Monto</th>
                 <th className="px-4 py-3 text-right font-medium">En USD</th>
-                <th className="w-12 px-2 py-3">
-                  <span className="sr-only">Eliminar</span>
+                <th className="w-20 px-2 py-3">
+                  <span className="sr-only">Acciones</span>
                 </th>
               </tr>
             </thead>
@@ -235,7 +241,20 @@ export function ExpensesList(props: {
                     >
                       {r.usd}
                     </td>
-                    <td className="px-2 py-3 text-right">
+                    <td className="whitespace-nowrap px-2 py-3 text-right">
+                      {!selecting && r.kind === "cost" && (
+                        <Link
+                          href={`/gastos/nuevo?copiar=${r.id}`}
+                          aria-label="Duplicar gasto"
+                          title="Duplicar"
+                          className="inline-grid size-8 place-items-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink"
+                        >
+                          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+                            <path d="M10.5 3.5v-.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" />
+                          </svg>
+                        </Link>
+                      )}
                       {!selecting && (
                         <button
                           onClick={() => remove([r.id])}

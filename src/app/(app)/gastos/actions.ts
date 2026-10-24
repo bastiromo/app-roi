@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { d } from "@/domain/money";
-import { expenseSchema } from "@/domain/schemas";
+import { batchAccountLabels, expenseSchema } from "@/domain/schemas";
 import { requireUser } from "@/lib/auth";
 import { dbMessage, fieldErrors, type FormState, formValues } from "@/lib/form";
 import { type FxLookup, lookupUsdClp } from "@/lib/fx";
@@ -23,7 +23,8 @@ export async function saveExpense(id: string | null, _prev: FormState, form: For
   const values = formValues(form);
   const parsed = expenseSchema.safeParse(values);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
-  const { data, confirmDuplicate } = parsed.data;
+  const { data, confirmDuplicate, batch } = parsed.data;
+  if (id && batch.quantity > 1) return { errors: { quantity: "Al editar se modifica un solo gasto." }, values };
 
   // Cuenta debe pertenecer a la empresa elegida
   if (data.account_id) {
@@ -47,7 +48,7 @@ export async function saveExpense(id: string | null, _prev: FormState, form: For
   }
 
   // Posible duplicado: misma empresa, monto y moneda, ±2 días (solo si no hay n.º de orden ni hash)
-  if (!confirmDuplicate && data.kind === "cost" && !data.external_ref && !data.tx_hash) {
+  if (!confirmDuplicate && data.kind === "cost" && batch.refs.length === 0 && !data.tx_hash) {
     let q = supabase
       .from("expenses")
       .select("occurred_on,description")
@@ -63,23 +64,61 @@ export async function saveExpense(id: string | null, _prev: FormState, form: For
     if (similar) {
       return {
         values,
-        warning: `Ya registraste un gasto igual el ${similar.occurred_on}${similar.description ? ` (${similar.description})` : ""}. Si es otro gasto distinto, marca la casilla y guarda de nuevo.`,
+        warning: `Ya registraste un gasto igual el ${similar.occurred_on}${similar.description ? ` (${similar.description})` : ""}. Si ${batch.quantity > 1 ? "estas son otras compras" : "es otro gasto distinto"}, marca la casilla y guarda de nuevo.`,
       };
     }
   }
 
-  const { error } = id ? await supabase.from("expenses").update(data).eq("id", id) : await supabase.from("expenses").insert({ ...data, source: "manual" });
-  if (error) {
-    if (error.code === "23505") {
-      const field = error.message.includes("tx_hash") ? "tx_hash" : "external_ref";
-      return { errors: { [field]: field === "tx_hash" ? "Ese hash de transacción ya está registrado." : "Ese n.º de orden ya está registrado en esta empresa." }, values };
+  if (id) {
+    const { error } = await supabase.from("expenses").update({ ...data, external_ref: batch.refs[0] ?? null }).eq("id", id);
+    if (error) return insertError(error, values);
+  } else {
+    // Cuentas de evaluación, una por compra (opcional)
+    let accountIds: (string | null)[] = Array(batch.quantity).fill(data.account_id);
+    let createdAccounts: string[] = [];
+    if (batch.accounts) {
+      const labels = batchAccountLabels(batch.accounts.prefix, batch.accounts.start, batch.quantity);
+      const { data: created, error } = await supabase
+        .from("accounts")
+        .insert(labels.map((label) => ({ firm_id: data.firm_id, label, plan_name: data.description, phase: "evaluacion", status: "activa", opened_on: data.occurred_on })))
+        .select("id,label");
+      if (error || !created) return { message: dbMessage(error ?? { message: "sin respuesta" }), values };
+      const byLabel = new Map(created.map((c) => [c.label, c.id as string]));
+      accountIds = labels.map((l) => byLabel.get(l) ?? null);
+      createdAccounts = created.map((c) => c.id as string);
     }
-    return { message: dbMessage(error), values };
+    const rows = Array.from({ length: batch.quantity }, (_, i) => ({
+      ...data,
+      account_id: accountIds[i],
+      external_ref: batch.refs[i] ?? null,
+      source: batch.quantity > 1 ? "manual-lote" : "manual",
+    }));
+    const { error } = await supabase.from("expenses").insert(rows); // una sola sentencia: todo o nada
+    if (error) {
+      // Compensa: si los gastos no se guardaron, las cuentas recién creadas no deben quedar.
+      if (createdAccounts.length) await supabase.rpc("delete_accounts", { p_ids: createdAccounts });
+      return insertError(error, values);
+    }
+    revalidatePath("/cuentas");
+    revalidatePath("/gastos");
+    revalidatePath("/");
+    redirect(`/gastos?guardado=${batch.quantity}${batch.accounts ? "&cuentas=1" : ""}`);
   }
 
   revalidatePath("/gastos");
   revalidatePath("/");
   redirect("/gastos?guardado=1");
+}
+
+function insertError(error: { code?: string; message: string }, values: Record<string, string>): FormState {
+  if (error.code === "23505") {
+    const field = error.message.includes("tx_hash") ? "tx_hash" : "external_ref";
+    return {
+      errors: { [field]: field === "tx_hash" ? "Ese hash de transacción ya está registrado." : "Uno de esos n.º de orden ya está registrado en esta empresa." },
+      values,
+    };
+  }
+  return { message: dbMessage(error), values };
 }
 
 export interface ExpenseDeleteResult {

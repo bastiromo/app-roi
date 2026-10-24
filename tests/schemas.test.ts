@@ -64,3 +64,31 @@ describe("formulario de gasto", () => {
     expect(expenseSchema.safeParse({ ...base, fx_usd_clp: "" }).success).toBe(false);
   });
 });
+
+import { batchAccountLabels, splitRefs } from "../src/domain/schemas";
+
+describe("varias compras iguales", () => {
+  const base = { kind: "cost", status: "paid", occurred_on: "2026-10-19", category: "evaluacion", amount: "144", currency: "USD", fx_usd_clp: "950", firm_id: "0b9a2c55-6f1e-4c2b-9d0a-3f1e2a4b5c6d" };
+  it("12 compras sin n.º de orden", () => {
+    const r = expenseSchema.safeParse({ ...base, quantity: "12" });
+    expect(r.success && r.data.batch.quantity).toBe(12);
+  });
+  it("n.º de orden: uno por compra", () => {
+    expect(expenseSchema.safeParse({ ...base, quantity: "3", external_ref: "#11, #12, #13" }).success).toBe(true);
+    const bad = expenseSchema.safeParse({ ...base, quantity: "3", external_ref: "11 12" });
+    expect(!bad.success && bad.error.issues[0].path[0]).toBe("external_ref");
+  });
+  it("no permite hash con varias compras ni más de 50", () => {
+    expect(expenseSchema.safeParse({ ...base, quantity: "2", tx_hash: "0xabc" }).success).toBe(false);
+    expect(expenseSchema.safeParse({ ...base, quantity: "51" }).success).toBe(false);
+  });
+  it("crear cuentas exige nombre", () => {
+    expect(expenseSchema.safeParse({ ...base, quantity: "2", create_accounts: "on" }).success).toBe(false);
+    const ok = expenseSchema.safeParse({ ...base, quantity: "2", create_accounts: "on", account_prefix: "Select 50K", account_start: "5" });
+    expect(ok.success && ok.data.batch.accounts).toEqual({ prefix: "Select 50K", start: 5 });
+  });
+  it("utilidades", () => {
+    expect(splitRefs("#1, 2;3\n4")).toEqual(["1", "2", "3", "4"]);
+    expect(batchAccountLabels("Select 50K", 5, 3)).toEqual(["Select 50K 5", "Select 50K 6", "Select 50K 7"]);
+  });
+});

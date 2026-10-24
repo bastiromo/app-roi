@@ -47,6 +47,10 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
   const [fxSource, setFxSource] = useState(v("fx_source"));
   const [fxNote, setFxNote] = useState<string>("");
   const userTypedFx = useRef(Boolean(id) && defaults.fx_source === "manual");
+  const [quantity, setQuantity] = useState(state.values?.quantity ?? "1");
+  const [createAccounts, setCreateAccounts] = useState(state.values?.create_accounts === "on");
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  const many = !id && kind === "cost" && qty > 1;
 
   // Al cambiar la fecha, sugiere el dólar observado (si el usuario no lo escribió a mano).
   useEffect(() => {
@@ -177,11 +181,61 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
         <input type="hidden" name="fx_source" value={fxSource} />
       </fieldset>
 
+      {!id && kind === "cost" && (
+        <fieldset className="space-y-4 rounded-xl border border-line bg-surface p-4">
+          <legend className="px-1 font-semibold">Varias compras iguales</legend>
+          <p className="text-sm text-ink-2">Si compraste varias cuentas iguales, indica cuántas y se registra un gasto por cada una.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Cantidad"
+              name="quantity"
+              type="number"
+              min={1}
+              max={50}
+              value={quantity}
+              onChange={(ev) => setQuantity(ev.target.value)}
+              error={e.quantity}
+            />
+          </div>
+          <Check
+            label="Crear también una cuenta de evaluación por cada compra"
+            hint="Cada gasto queda vinculado a su cuenta, para ver el ROI por cuenta. Después puedes renombrarlas con su ID real."
+            name="create_accounts"
+            checked={createAccounts}
+            onChange={(ev) => setCreateAccounts(ev.target.checked)}
+          />
+          {createAccounts && (
+            <div className="grid gap-4 border-l-2 border-line pl-4 sm:grid-cols-2">
+              <Field
+                label="Nombre de las cuentas"
+                name="account_prefix"
+                defaultValue={state.values?.account_prefix ?? (options.firms.find((f) => f.id === firmId)?.name ?? "") + " " + "Eval"}
+                error={e.account_prefix}
+                hint="Se numeran solas: Tradeify Eval 1, Tradeify Eval 2…"
+              />
+              <Field label="Empezar en el número" name="account_start" type="number" min={0} defaultValue={state.values?.account_start ?? "1"} error={e.account_start} />
+            </div>
+          )}
+          {qty > 1 && (
+            <p className="num text-sm text-ink">
+              Se registrarán <strong>{qty} gastos</strong>
+              {createAccounts ? <> y <strong>{qty} cuentas de evaluación</strong></> : null}.
+            </p>
+          )}
+        </fieldset>
+      )}
+
       <fieldset className="space-y-4">
         <legend className="mb-2 font-semibold">Comprobante</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="N.º de orden" name="external_ref" defaultValue={v("external_ref")} error={e.external_ref} hint="Evita registrar dos veces la misma compra." />
-          <Field label="Hash de transacción (cripto)" name="tx_hash" defaultValue={v("tx_hash")} error={e.tx_hash} />
+          <Field
+            label={many ? "N.º de orden (uno por compra)" : "N.º de orden"}
+            name="external_ref"
+            defaultValue={v("external_ref")}
+            error={e.external_ref}
+            hint={many ? `Opcional. Escribe los ${qty} números separados por coma.` : "Evita registrar dos veces la misma compra."}
+          />
+          {!many && <Field label="Hash de transacción (cripto)" name="tx_hash" defaultValue={v("tx_hash")} error={e.tx_hash} />}
           <Select label="Estado" name="status" defaultValue={v("status")} hint="Solo los pagados cuentan en el ROI.">
             {EXPENSE_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -195,7 +249,7 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
       {state.warning && (
         <div className="space-y-3 rounded-lg border border-estimate/50 p-3">
           <p role="alert" className="text-sm text-estimate">{state.warning}</p>
-          <Check label="Sí, es otro gasto distinto" name="confirm_duplicate" />
+          <Check label={many ? "Sí, son otras compras" : "Sí, es otro gasto distinto"} name="confirm_duplicate" />
         </div>
       )}
       {state.message && <Notice tone="error">{state.message}</Notice>}
@@ -203,7 +257,7 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
 
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando…" : kind === "cost" ? "Guardar gasto" : "Guardar reembolso"}
+          {pending ? "Guardando…" : kind === "refund" ? "Guardar reembolso" : many ? `Registrar ${qty} gastos` : "Guardar gasto"}
         </Button>
         <Link href="/gastos" className="inline-flex h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-2 hover:text-ink">
           Cancelar
