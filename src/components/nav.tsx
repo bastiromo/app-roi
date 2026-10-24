@@ -9,7 +9,7 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Empresas", href: "/empresas" },
   { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", href: "/gastos" },
-  { label: "Payouts", stage: "Etapa 4" },
+  { label: "Payouts", href: "/payouts" },
 ];
 
 export function Nav({ orientation }: { orientation: "vertical" | "horizontal" }) {

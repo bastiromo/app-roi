@@ -40,6 +40,14 @@ export default async function EditAccountPage({
           <Link href={`/gastos/nuevo?cuenta=${a.id}`} className="font-medium text-ink underline">
             Registrar un gasto de esta cuenta
           </Link>
+          {a.phase !== "evaluacion" && (
+            <>
+              {" "}o{" "}
+              <Link href={`/payouts/nuevo?cuenta=${a.id}`} className="font-medium text-ink underline">
+                un payout
+              </Link>
+            </>
+          )}
         </p>
         {fundedChild && (
           <p className="text-sm text-ink-2">

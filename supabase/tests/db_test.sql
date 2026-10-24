@@ -165,6 +165,33 @@ insert into accounts (firm_id, label, phase, opened_on) values (pg_temp.id('firm
 select pg_temp.must_fail(format($q$select approve_evaluation(%L, 'PRO009', null, '2026-10-01')$q$,
                          (select id from accounts where label = 'TEST-9')), 'aprobación anterior a la apertura');
 
+-- save_payout: payout pagado con recibo estimado, luego corregido con el real
+insert into ids select 'sp1', save_payout(null, pg_temp.id('firm_A'), pg_temp.id('acc_a2'), 'paid', '2026-10-20', '2026-10-20',
+  2000, 90, 0, 'USD', null, 'estimated', 1775, 'USD', '2026-10-20', null, 950, 'dolar_observado', 25, null);
+select pg_temp.assert((select sum(amount_usd) from cash_flows where flow_type = 'payout_recibido' and source_id in
+  (select receipt_id from receipt_allocations where payout_id = pg_temp.id('sp1'))) = 1775, 'payout estimado: recibido 1.775');
+select pg_temp.assert((select bool_and(is_estimated) from cash_flows where source_id in
+  (select receipt_id from receipt_allocations where payout_id = pg_temp.id('sp1'))), 'marcado como estimado');
+select save_payout(pg_temp.id('sp1'), pg_temp.id('firm_A'), pg_temp.id('acc_a2'), 'paid', '2026-10-20', '2026-10-21',
+  2000, 90, 0, 'USD', 'corregido', 'actual', 1780, 'USDT', '2026-10-21', 1, 950, 'manual', 0, '0xsp1');
+select pg_temp.assert((select count(*) from cash_flows c join receipt_allocations a on a.receipt_id = c.source_id
+                       where a.payout_id = pg_temp.id('sp1')) = 1, 'al editar se reemplaza el recibo (no se duplica)');
+select pg_temp.assert((select sum(c.amount_usd) from cash_flows c join receipt_allocations a on a.receipt_id = c.source_id
+                       where a.payout_id = pg_temp.id('sp1') and not c.is_estimated) = 1780, 'ahora recibido real 1.780');
+select pg_temp.must_fail(format($q$select save_payout(null, %L, %L, 'requested', '2026-10-22', null, 1000, 90, 0, 'USD', null,
+  'estimated', 875, 'USD', null, null, 950, 'manual', 25, null)$q$, pg_temp.id('firm_A'), pg_temp.id('acc_a2')),
+  'recibo en payout no pagado');
+select pg_temp.must_fail(format($q$select save_payout(null, %L, %L, 'paid', '2026-10-22', null, 1000, 90, 0, 'USD', null,
+  'none', null, null, null, null, null, null, null, null)$q$, pg_temp.id('firm_B'), pg_temp.id('acc_a2')),
+  'cuenta de otra empresa');
+select pg_temp.assert((select delete_payouts(array[pg_temp.id('sp1')])) = 1, 'eliminar payout');
+select pg_temp.assert((select count(*) from cash_flows c join receipt_allocations a on a.receipt_id = c.source_id
+                       where a.payout_id = pg_temp.id('sp1')) = 0, 'su recibo deja de contar');
+select pg_temp.assert((select restore_payouts(array[pg_temp.id('sp1')])) = 1, 'deshacer eliminación de payout');
+select pg_temp.assert((select sum(c.amount_usd) from cash_flows c join receipt_allocations a on a.receipt_id = c.source_id
+                       where a.payout_id = pg_temp.id('sp1')) = 1780, 'vuelve el recibo real (no el estimado viejo)');
+select delete_payouts(array[pg_temp.id('sp1')]);
+
 -- Eliminar y deshacer
 select pg_temp.must_fail(format($q$select delete_accounts(array[%L]::uuid[])$q$, pg_temp.id('acc_a1')),
                          'eliminar cuenta con payouts');

@@ -1,3 +1,4 @@
+import { d } from "./money";
 import { z } from "zod";
 
 /** Campos vacíos de formulario → null. */
@@ -253,4 +254,57 @@ export function splitRefs(raw: string | null | undefined): string[] {
 /** Nombres de cuentas para una compra múltiple: "Tradeify 50K" desde 1 → "Tradeify 50K 1", "Tradeify 50K 2"… */
 export function batchAccountLabels(prefix: string, start: number, quantity: number): string[] {
   return Array.from({ length: quantity }, (_, i) => `${prefix.trim()} ${start + i}`);
+}
+
+// ---------------------------------------------------------------------------
+// Payouts
+// ---------------------------------------------------------------------------
+export const PAYOUT_STATUSES = ["requested", "approved", "paid", "rejected", "cancelled"] as const;
+export const PAYOUT_STATUS_LABEL: Record<(typeof PAYOUT_STATUSES)[number] | "draft", string> = {
+  draft: "Borrador",
+  requested: "Solicitado",
+  approved: "Aprobado",
+  paid: "Pagado",
+  rejected: "Rechazado",
+  cancelled: "Cancelado",
+};
+
+const isoRequired = (msg: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, msg);
+
+export const payoutSchema = z
+  .object({
+    firm_id: z.uuid("Elige la empresa."),
+    account_id: z.uuid("Elige la cuenta."),
+    status: z.enum(PAYOUT_STATUSES),
+    requested_on: isoRequired("Indica la fecha de solicitud."),
+    paid_on: isoDate,
+    requested_amount: decimal("Monto retirado", { min: 0.01, required: true }),
+    trader_share_pct: decimal("Tu porcentaje", { min: 0, max: 100, required: true }),
+    transfer_fee: decimal("Comisión de transferencia", { min: 0 }),
+    notes: optionalText,
+    receipt_mode: z.enum(["estimated", "actual"]).default("estimated"),
+    received_amount: decimal("Monto recibido", { min: 0 }),
+    received_currency: z.enum(CURRENCIES).default("USDT"),
+    received_on: isoDate,
+    usd_rate: decimal("Valor en USD de 1 unidad", { min: 0.0001 }),
+    fx_usd_clp: decimal("Dólar en pesos", { min: 1 }),
+    fx_source: z.enum(["manual", "dolar_observado"]).default("manual"),
+    tx_hash: optionalText,
+  })
+  .superRefine((p, ctx) => {
+    if (p.status === "paid") {
+      if (!p.fx_usd_clp) ctx.addIssue({ code: "custom", path: ["fx_usd_clp"], message: "Indica el dólar en pesos de la fecha de pago." });
+      if (p.receipt_mode === "actual" && !p.received_amount) {
+        ctx.addIssue({ code: "custom", path: ["received_amount"], message: "Escribe cuánto llegó, o elige usar el estimado." });
+      }
+    }
+    if (p.paid_on && p.paid_on < p.requested_on) {
+      ctx.addIssue({ code: "custom", path: ["paid_on"], message: "El pago no puede ser anterior a la solicitud." });
+    }
+  });
+
+/** Lo que llega estimado: retiro × % del trader − comisión de transferencia. Nunca negativo. */
+export function estimateReceived(requested: string, pct: string, transferFee: string | null): string {
+  const v = d(requested).mul(d(pct)).div(100).sub(d(transferFee ?? "0"));
+  return (v.isNegative() ? d(0) : v).toDecimalPlaces(2).toFixed(2);
 }

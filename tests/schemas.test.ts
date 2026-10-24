@@ -92,3 +92,19 @@ describe("varias compras iguales", () => {
     expect(batchAccountLabels("Select 50K", 5, 3)).toEqual(["Select 50K 5", "Select 50K 6", "Select 50K 7"]);
   });
 });
+
+import { estimateReceived, payoutSchema } from "../src/domain/schemas";
+
+describe("payouts", () => {
+  const base = { firm_id: "0b9a2c55-6f1e-4c2b-9d0a-3f1e2a4b5c6d", account_id: "1b9a2c55-6f1e-4c2b-9d0a-3f1e2a4b5c6d", requested_on: "2026-10-22", requested_amount: "2.000", trader_share_pct: "90", transfer_fee: "25" };
+  it("estimado Lucid: 2.000 × 90 % − 25 = 1.775", () => expect(estimateReceived("2000", "90", "25")).toBe("1775.00"));
+  it("Apex mezclado: 3.000 × 93,333333 % − 25 = 2.775", () => expect(estimateReceived("3000", "93.333333", "25")).toBe("2775.00"));
+  it("nunca negativo", () => expect(estimateReceived("10", "90", "25")).toBe("0.00"));
+  it("pagado exige dólar del día", () => {
+    expect(payoutSchema.safeParse({ ...base, status: "paid" }).success).toBe(false);
+    expect(payoutSchema.safeParse({ ...base, status: "paid", fx_usd_clp: "950" }).success).toBe(true);
+  });
+  it("monto real exige cuánto llegó", () =>
+    expect(payoutSchema.safeParse({ ...base, status: "paid", fx_usd_clp: "950", receipt_mode: "actual" }).success).toBe(false));
+  it("solicitado no exige dólar", () => expect(payoutSchema.safeParse({ ...base, status: "requested" }).success).toBe(true));
+});
