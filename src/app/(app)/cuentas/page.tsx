@@ -70,7 +70,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
         </section>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-          <table className="w-full min-w-[44rem] text-sm">
+          <table className="w-full min-w-[52rem] text-sm">
             <thead className="text-left text-ink-2">
               <tr className="border-b border-line">
                 <th className="px-4 py-3 font-medium">Cuenta</th>
@@ -79,6 +79,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                 <th className="px-4 py-3 font-medium">Fase</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Apertura</th>
+                <th className="px-4 py-3 font-medium">Cierre o pérdida</th>
               </tr>
             </thead>
             <tbody>
@@ -100,6 +101,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                     <Tag tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</Tag>
                   </td>
                   <td className="num px-4 py-3">{formatDate(a.opened_on)}</td>
+                  <td className={`num px-4 py-3 ${a.status === "perdida" ? "text-debit" : ""}`}>{a.closed_on ? formatDate(a.closed_on) : "—"}</td>
                 </tr>
               ))}
             </tbody>

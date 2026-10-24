@@ -32,6 +32,7 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
   const e = state.errors ?? {};
   const [firmId, setFirmId] = useState(v("firm_id"));
   const [status, setStatus] = useState(v("status"));
+  const [phase, setPhase] = useState(v("phase"));
 
   // Empresas usables: configuradas y activas, más la actual aunque esté inactiva.
   const firms = options.firms.filter((f) => (f.is_configured && f.is_active) || f.id === defaults.firm_id);
@@ -68,7 +69,7 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
       <fieldset className="space-y-4">
         <legend className="mb-2 font-semibold">Situación</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select label="Fase" name="phase" defaultValue={v("phase")} error={e.phase}>
+          <Select label="Fase" name="phase" value={phase} onChange={(ev) => setPhase(ev.target.value)} error={e.phase}>
             {PHASES.map((p) => (
               <option key={p} value={p}>
                 {PHASE_LABEL[p]}
@@ -91,21 +92,27 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
             error={e.closed_on}
           />
         </div>
-        <Select
-          label="Nació de la cuenta"
-          name="origin_account_id"
-          defaultValue={v("origin_account_id")}
-          error={e.origin_account_id}
-          hint="Si es financiada, la evaluación que la originó. Sus costos se sumarán al ROI de esta cuenta."
-          disabled={!firmId}
-        >
-          <option value="">Ninguna</option>
-          {origins.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.label} ({PHASE_LABEL[a.phase as keyof typeof PHASE_LABEL]})
-            </option>
-          ))}
-        </Select>
+        {phase !== "evaluacion" && (
+          <details className="rounded-lg border border-line bg-surface p-4" open={Boolean(v("origin_account_id"))}>
+            <summary className="cursor-pointer text-sm font-medium text-ink">¿Esta cuenta salió de otra evaluación? (opcional)</summary>
+            <p className="mt-3 text-sm text-ink-2">
+              En algunas empresas, al aprobar una evaluación te entregan una cuenta financiada <strong>nueva, con otro ID</strong> (por
+              ejemplo, en Apex). Si es tu caso, elige aquí la evaluación de la que salió, para que lo que pagaste por ella se cuente
+              en el ROI de esta cuenta.
+            </p>
+            <p className="mt-2 text-sm text-ink-2">Si es la misma cuenta que simplemente pasó a financiada, déjalo en &quot;No&quot;.</p>
+            <div className="mt-3">
+              <Select label="Evaluación de origen" name="origin_account_id" defaultValue={v("origin_account_id")} error={e.origin_account_id} disabled={!firmId}>
+                <option value="">No, es la misma cuenta</option>
+                {origins.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label} ({PHASE_LABEL[a.phase as keyof typeof PHASE_LABEL]})
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </details>
+        )}
         <TextArea label="Notas" name="notes" defaultValue={v("notes")} />
       </fieldset>
 
