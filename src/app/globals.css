@@ -17,6 +17,10 @@
   --debit: #b3261e;     /* salidas */
   --estimate: #a16207;  /* estimados */
   --focus: #2f5bd3;
+  /* Serie de gráficos (validadas: daltonismo y contraste, claro y oscuro) */
+  --series-cost: #eb6834;
+  --series-received: #2a78d6;
+  --grid: #e3e8ee;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,6 +36,9 @@
     --debit: #f2867e;
     --estimate: #e8b04b;
     --focus: #8aa8ff;
+    --series-cost: #d95926;
+    --series-received: #3987e5;
+    --grid: #24324a;
   }
 }
 :root[data-theme="dark"] {
@@ -46,6 +53,9 @@
   --debit: #f2867e;
   --estimate: #e8b04b;
   --focus: #8aa8ff;
+  --series-cost: #d95926;
+  --series-received: #3987e5;
+  --grid: #24324a;
 }
 
 @theme inline {
@@ -60,6 +70,8 @@
   --color-debit: var(--debit);
   --color-estimate: var(--estimate);
   --color-focus: var(--focus);
+  --color-series-cost: var(--series-cost);
+  --color-series-received: var(--series-received);
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 

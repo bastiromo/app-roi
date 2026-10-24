@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { CumulativeLine, MonthlyBars, MonthlyTable } from "@/components/monthly-chart";
+import { byFirm, type FirmResult, monthlySeries } from "@/domain/dashboard";
 import { summarizeFlows, type FlowRow } from "@/domain/flows";
-import type { Decimal } from "@/domain/money";
+import { d, type Decimal } from "@/domain/money";
 import { requireUser } from "@/lib/auth";
 import { formatMoney, formatPct } from "@/lib/format";
 import { Q } from "@/lib/queries";
+import { listPayouts } from "./payouts/data";
 
 export const metadata: Metadata = { title: "Resumen" };
 
 export default async function DashboardPage() {
   const { supabase } = await requireUser();
 
-  const [{ data: flows, error }, { count: activeAccounts }] = await Promise.all([
+  const [{ data: flows, error }, { count: activeAccounts }, { data: firms }, payouts] = await Promise.all([
     supabase
       .from("cash_flows")
       .select(Q.flowsSummary)
-      .returns<FlowRow[]>(),
+      .returns<(FlowRow & { flow_date: string })[]>(),
     supabase.from("accounts").select("id", { count: "exact", head: true }).eq("status", "activa").is("deleted_at", null),
+    supabase.from("firms").select("id,name").returns<{ id: string; name: string }[]>(),
+    listPayouts(),
   ]);
 
   if (error) {
@@ -25,6 +31,24 @@ export default async function DashboardPage() {
   const rows = flows ?? [];
   const usd = summarizeFlows(rows, "usd");
   const clp = summarizeFlows(rows, "clp");
+
+  // Por cobrar: payouts solicitados/aprobados, o pagados sin monto recibido (tu parte, antes de comisiones)
+  const pendingByFirm = new Map<string, Decimal>();
+  for (const p of payouts) {
+    const waiting = !p.received && (p.status === "requested" || p.status === "approved" || p.status === "paid");
+    if (!waiting) continue;
+    const share = d(p.requested_amount).mul(d(p.trader_share_pct)).div(100);
+    pendingByFirm.set(p.firm_id, (pendingByFirm.get(p.firm_id) ?? d(0)).add(share));
+  }
+  const pending = [...pendingByFirm.values()].reduce((t, v) => t.add(v), d(0));
+  const perFirm = byFirm(rows, firms ?? [], pendingByFirm);
+  const months = monthlySeries(rows).map((m) => ({
+    month: m.month,
+    costs: Number(m.costs.toFixed(2)),
+    received: Number(m.received.toFixed(2)),
+    net: Number(m.net.toFixed(2)),
+    cumulative: Number(m.cumulative.toFixed(2)),
+  }));
 
   return (
     <div className="space-y-10">
@@ -47,9 +71,47 @@ export default async function DashboardPage() {
           <dl className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="ROI en pesos" value={formatPct(clp.roiPrePct)} note={`Beneficio ${formatMoney(clp.B, "clp")}`} />
             <Stat label="Capital recuperado" value={formatPct(usd.recoveryPct)} note="Recibido sobre costos" />
-            <Stat label="Impuestos pagados" value={formatMoney(usd.T, "usd")} note={`Beneficio neto ${formatMoney(usd.N, "usd")}`} />
-            <Stat label="Cuentas activas" value={String(activeAccounts ?? 0)} />
+            <Stat
+              label="Por cobrar"
+              value={formatMoney(pending, "usd")}
+              note={pending.isZero() ? "Sin payouts pendientes" : "Solicitados o sin monto recibido"}
+            />
+            <Stat
+              label="Cuentas activas"
+              value={String(activeAccounts ?? 0)}
+              note={usd.T.isZero() ? undefined : `Impuestos pagados ${formatMoney(usd.T, "usd")}`}
+            />
           </dl>
+
+          <FirmTable rows={perFirm} />
+
+          {months.length > 0 && (
+            <section aria-labelledby="evolucion" className="space-y-6 rounded-xl border border-line bg-surface p-5 md:p-8">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 id="evolucion" className="font-semibold">
+                    Mes a mes
+                  </h2>
+                  <p className="text-sm text-ink-2">Costos pagados y dinero recibido en cada mes, en USD.</p>
+                </div>
+                <ul className="flex gap-4 text-sm text-ink-2" aria-label="Leyenda">
+                  <li className="flex items-center gap-2">
+                    <span className="inline-block size-3 rounded-sm bg-series-cost" /> Costos
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="inline-block size-3 rounded-sm bg-series-received" /> Recibido
+                  </li>
+                </ul>
+              </div>
+              <MonthlyBars data={months} />
+              <div>
+                <h3 className="font-semibold">Beneficio acumulado</h3>
+                <p className="text-sm text-ink-2">Sobre la línea del cero ya recuperaste todo lo invertido.</p>
+              </div>
+              <CumulativeLine data={months} />
+              <MonthlyTable data={months} />
+            </section>
+          )}
         </>
       )}
     </div>
@@ -98,6 +160,66 @@ function Term(props: { label: string; value: string; tone: "credit" | "debit" | 
 
 function Op({ children }: { children: React.ReactNode }) {
   return <span aria-hidden="true" className="hidden pb-1 text-2xl font-light text-ink-3 md:block">{children}</span>;
+}
+
+function FirmTable({ rows }: { rows: FirmResult[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section aria-labelledby="por-empresa">
+      <h2 id="por-empresa" className="mb-3 font-semibold">
+        Por empresa
+      </h2>
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[40rem] text-sm">
+          <thead className="text-left text-ink-2">
+            <tr className="border-b border-line">
+              <th className="px-4 py-3 font-medium">Empresa</th>
+              <th className="px-4 py-3 text-right font-medium">Costos</th>
+              <th className="px-4 py-3 text-right font-medium">Recibido</th>
+              <th className="px-4 py-3 text-right font-medium">Beneficio</th>
+              <th className="px-4 py-3 text-right font-medium">ROI</th>
+              <th className="px-4 py-3 text-right font-medium">Por cobrar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((f) => (
+              <tr key={f.firmId ?? "general"} className="border-b border-line last:border-0">
+                <td className="px-4 py-3">
+                  {f.firmId ? (
+                    <Link href={`/gastos?empresa=${f.firmId}`} className="font-medium text-ink hover:underline">
+                      {f.name}
+                    </Link>
+                  ) : (
+                    <span className="text-ink-2">{f.name}</span>
+                  )}
+                </td>
+                <td className="num px-4 py-3 text-right">{formatMoney(f.costs, "usd")}</td>
+                <td className="num px-4 py-3 text-right">
+                  {f.receivedEstimated.isZero() ? (
+                    formatMoney(f.received, "usd")
+                  ) : (
+                    <span className={f.receivedEstimated.eq(f.received) ? "est" : ""} title={`${formatMoney(f.receivedEstimated, "usd")} estimado`}>
+                      {formatMoney(f.received, "usd")}
+                      {!f.receivedEstimated.eq(f.received) && <span className="ml-0.5 text-xs text-estimate">*</span>}
+                    </span>
+                  )}
+                </td>
+                <td className={`num px-4 py-3 text-right font-semibold ${f.profit.isNegative() ? "text-debit" : "text-ink"}`}>
+                  {formatMoney(f.profit, "usd")}
+                </td>
+                <td className="num px-4 py-3 text-right">{formatPct(f.roiPct)}</td>
+                <td className="num px-4 py-3 text-right text-ink-2">{f.pending.isZero() ? "—" : formatMoney(f.pending, "usd")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-ink-3">
+        Sin impuestos. Los costos sin empresa (plataformas, datos) solo cuentan en el total.{" "}
+        <span className="est">Punteado</span> o * = incluye recibido estimado.
+      </p>
+    </section>
+  );
 }
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {

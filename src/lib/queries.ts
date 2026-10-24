@@ -20,7 +20,7 @@ export const Q = {
   paidPayouts: "id,firm_id,requested_on,requested_amount::text",
   payoutReceipt:
     "receipts(received_on,basis,amount::text,currency,usd_rate::text,fx_usd_clp::text,fx_source,processor_fee::text,tx_hash,deleted_at)",
-  flowsSummary: "flow_type,direction,firm_id,is_estimated,amount_usd::text,amount_clp::text",
+  flowsSummary: "flow_date,flow_type,direction,firm_id,is_estimated,amount_usd::text,amount_clp::text",
   flowsByPayout: "payout_id,amount_usd::text,amount_clp::text,is_estimated",
   statusHistory: "phase,status,changed_at",
 } as const;
