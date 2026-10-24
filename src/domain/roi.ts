@@ -1,5 +1,5 @@
 import { addDual, d, Decimal, type Dual, scaleDual, subDual, toDual, ZERO } from "./money";
-import type { Expense, Ledger, Payout, Receipt, Scope } from "./types";
+import type { Expense, Firm, Ledger, Payout, Receipt, Scope } from "./types";
 
 // ---------------------------------------------------------------------------
 // Estimaciones (nunca cuentan como dinero recibido)
@@ -10,6 +10,40 @@ export function estimatePayoutNet(p: Payout): Decimal {
   const pct = d(p.traderSharePct);
   if (pct.lt(0) || pct.gt(100)) throw new Error(`% del trader fuera de rango en ${p.id}: ${p.traderSharePct}`);
   return d(p.requestedAmount).mul(pct).div(100).sub(d(p.firmFeeAmount ?? "0"));
+}
+
+/**
+ * Recibo ESTIMADO para un payout pagado sin registro real:
+ * retiro × % del trader − comisión de empresa − comisión fija de transferencia.
+ * Ej. Lucid: 2.000 × 90 % − 25 = 1.775.
+ */
+export function estimateReceipt(p: Payout, firm: Firm, fxUsdClp: string): Receipt {
+  if (p.status !== "paid") throw new Error(`Solo se estima el recibo de un payout pagado (${p.id} está "${p.status}")`);
+  const amount = estimatePayoutNet(p).sub(d(firm.defaultTransferFee));
+  if (amount.isNegative()) throw new Error(`La comisión supera el neto del payout ${p.id}`);
+  return {
+    id: `est-${p.id}`,
+    receivedOn: p.requestedOn,
+    basis: "estimated",
+    amount: amount.toString(),
+    currency: p.currency,
+    fxUsdClp,
+    allocations: [{ payoutId: p.id }],
+  };
+}
+
+/** Agrega recibos estimados a todos los payouts pagados que no tienen recibo real. */
+export function withEstimatedReceipts(l: Ledger, firms: Firm[], fxUsdClp: (date: string) => string): Ledger {
+  const firmById = new Map(firms.map((f) => [f.id, f]));
+  const covered = new Set(l.receipts.flatMap((r) => r.allocations.map((a) => a.payoutId)));
+  const extra = l.payouts
+    .filter((p) => p.status === "paid" && !covered.has(p.id))
+    .map((p) => {
+      const firm = firmById.get(p.firmId);
+      if (!firm) throw new Error(`Empresa ${p.firmId} no configurada`);
+      return estimateReceipt(p, firm, fxUsdClp(p.requestedOn));
+    });
+  return { ...l, receipts: [...l.receipts, ...extra] };
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +138,8 @@ export interface Summary {
   costsGross: Dual; // gastos pagados
   refunds: Dual; // reembolsos recibidos
   C: Dual; // costos netos ("inversión")
-  R: Dual; // dinero efectivamente recibido
+  R: Dual; // dinero recibido (real + estimado)
+  REstimated: Dual; // parte de R que es estimada (debe mostrarse rotulada)
   B: Dual; // beneficio antes de impuestos
   T: Dual; // impuestos pagados (solo en vista global)
   N: Dual; // beneficio neto
@@ -149,6 +184,7 @@ export function summarize(l: Ledger, scope: Scope = {}): Summary {
   const C = subDual(costsGross, refunds);
 
   let R = ZERO;
+  let REstimated = ZERO;
   const received = new Set<string>();
   for (const r of l.receipts) {
     if (!inDate(r.receivedOn, scope)) continue;
@@ -159,7 +195,9 @@ export function summarize(l: Ledger, scope: Scope = {}): Summary {
       if (!p || p.status !== "paid") continue; // validateLedger lo reporta
       received.add(payoutId);
       if (!payoutInScope(p, scope)) continue;
-      R = addDual(R, total.isZero() ? ZERO : scaleDual(dual, share.div(total)));
+      const part = total.isZero() ? ZERO : scaleDual(dual, share.div(total));
+      R = addDual(R, part);
+      if (r.basis === "estimated") REstimated = addDual(REstimated, part);
     }
   }
 
@@ -184,6 +222,7 @@ export function summarize(l: Ledger, scope: Scope = {}): Summary {
     refunds,
     C,
     R,
+    REstimated,
     B,
     T,
     N,

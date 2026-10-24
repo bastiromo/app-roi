@@ -47,10 +47,15 @@ export interface ReceiptAllocation {
   amount?: string;
 }
 
-/** Dinero que efectivamente llegó (a la billetera o al banco). Única fuente de R. */
+/**
+ * Dinero que llegó (a la billetera o al banco). Única fuente de R.
+ * basis "estimated": monto calculado con la regla de la empresa (% del trader − comisión fija)
+ * cuando no hay registro real. Cuenta en R, pero el resumen lo informa por separado.
+ */
 export interface Receipt extends Amount {
   id: string;
   receivedOn: string;
+  basis?: "actual" | "estimated"; // por defecto "actual"
   txHash?: string;
   allocations: ReceiptAllocation[];
 }
@@ -59,6 +64,15 @@ export interface TaxPayment extends Amount {
   id: string;
   paidOn: string;
   taxYear: number;
+}
+
+/** Configuración de la empresa: solo prellena y estima; lo aplicado se guarda en cada payout. */
+export interface Firm {
+  id: string;
+  name: string;
+  defaultTraderSharePct: string; // Lucid: "90"
+  defaultTransferFee: string; // comisión fija por payout al transferir. Lucid: "25"
+  transferFeeCurrency: Currency;
 }
 
 export interface Ledger {

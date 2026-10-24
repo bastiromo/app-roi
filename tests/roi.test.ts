@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { d } from "../src/domain/money";
-import { allocateReceipt, estimatePayoutNet, summarize, validateLedger } from "../src/domain/roi";
-import type { Expense, Ledger, Payout, Receipt } from "../src/domain/types";
+import { allocateReceipt, estimatePayoutNet, estimateReceipt, summarize, validateLedger, withEstimatedReceipts } from "../src/domain/roi";
+import type { Expense, Firm, Ledger, Payout, Receipt } from "../src/domain/types";
 
 const usd = (x: { usd: unknown }) => (x.usd as ReturnType<typeof d>).toFixed(2);
 const clp = (x: { clp: unknown }) => (x.clp as ReturnType<typeof d>).toFixed(0);
@@ -176,4 +176,31 @@ describe("Lucid — datos reales", () => {
   });
   it("los 10 payouts sin recibo registrado quedan en 'por cobrar', no en ganancias", () =>
     expect(s.receivableUsd.toFixed(2)).toBe("9941.53"));
+
+  // Regla confirmada por Basti: retiro × 90 % − USD 25 fijos por transferencia.
+  const lucid: Firm = { id: "lucid", name: "Lucid Trading", defaultTraderSharePct: "90", defaultTransferFee: "25", transferFeeCurrency: "USD" };
+
+  it("ejemplo de Basti: retiro 2.000 → 1.800 → 1.775 recibidos (estimado)", () => {
+    const r = estimateReceipt({ ...payouts[0], requestedAmount: "2000" }, lucid, "950");
+    expect(r.amount).toBe("1775");
+    expect(r.basis).toBe("estimated");
+  });
+
+  it("con estimados: el recibo real del 22-10 se respeta y los otros 10 se estiman", () => {
+    const full = withEstimatedReceipts(l, [lucid], () => "950");
+    const s2 = summarize(full);
+    expect(validateLedger(full)).toEqual([]);
+    expect(full.receipts).toHaveLength(11); // 1 real + 10 estimados
+    expect(usd(s2.REstimated)).toBe("9691.53"); // 11.046,14 × 90 % − 10 × 25
+    expect(usd(s2.R)).toBe("13268.53"); // + 3.577 real
+    expect(usd(s2.B)).toBe("8236.13");
+    expect(p2(s2.roiPrePct.usd)).toBe("163.66");
+    expect(s2.receivableUsd.toFixed(2)).toBe("0.00");
+  });
+
+  it("si los 12 se estiman (sin el dato real): ROI 163,13 %", () => {
+    const s3 = summarize(withEstimatedReceipts({ ...l, receipts: [] }, [lucid], () => "950"));
+    expect(usd(s3.R)).toBe("13241.53"); // 13.541,53 − 12 × 25
+    expect(p2(s3.roiPrePct.usd)).toBe("163.13");
+  });
 });
