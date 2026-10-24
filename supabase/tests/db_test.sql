@@ -165,6 +165,16 @@ insert into accounts (firm_id, label, phase, opened_on) values (pg_temp.id('firm
 select pg_temp.must_fail(format($q$select approve_evaluation(%L, 'PRO009', null, '2026-10-01')$q$,
                          (select id from accounts where label = 'TEST-9')), 'aprobación anterior a la apertura');
 
+-- Eliminar y deshacer
+select pg_temp.must_fail(format($q$select delete_accounts(array[%L]::uuid[])$q$, pg_temp.id('acc_a1')),
+                         'eliminar cuenta con payouts');
+select pg_temp.assert((select delete_accounts(array[pg_temp.id('eval')])) = 1, 'eliminar evaluación');
+select pg_temp.assert((select origin_account_id is null and deleted_at is null from accounts where id = pg_temp.id('funded')),
+                      'la financiada queda sin vínculo y no se elimina');
+select pg_temp.assert((select restore_accounts(array[pg_temp.id('eval')])) = 1, 'deshacer eliminación');
+select pg_temp.assert((select deleted_at is null from accounts where id = pg_temp.id('eval')), 'la cuenta vuelve a estar visible');
+select pg_temp.assert((select delete_accounts(array[pg_temp.id('eval'), pg_temp.id('funded')])) = 2, 'eliminar varias a la vez');
+
 -- Auditoría y aislamiento
 update expenses set description = 'editado' where external_ref = 'A-1';
 select pg_temp.assert(

@@ -54,3 +54,30 @@ export async function approveEvaluation(evaluationId: string, _prev: FormState, 
   revalidatePath("/empresas");
   redirect(`/cuentas/${newId}?aprobada=1`);
 }
+
+export interface DeleteResult {
+  ok: boolean;
+  message: string;
+  ids?: string[];
+}
+
+export async function deleteAccounts(ids: string[]): Promise<DeleteResult> {
+  const { supabase } = await requireUser();
+  const clean = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (clean.length === 0) return { ok: false, message: "No seleccionaste ninguna cuenta." };
+  const { data, error } = await supabase.rpc("delete_accounts", { p_ids: clean });
+  if (error) return { ok: false, message: error.code === "23514" ? error.message : dbMessage(error) };
+  revalidatePath("/cuentas");
+  revalidatePath("/empresas");
+  const n = Number(data ?? 0);
+  return { ok: true, ids: clean, message: n === 1 ? "Cuenta eliminada." : `${n} cuentas eliminadas.` };
+}
+
+export async function restoreAccounts(ids: string[]): Promise<DeleteResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("restore_accounts", { p_ids: ids });
+  if (error) return { ok: false, message: dbMessage(error) };
+  revalidatePath("/cuentas");
+  revalidatePath("/empresas");
+  return { ok: true, message: "Eliminación deshecha." };
+}

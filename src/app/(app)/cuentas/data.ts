@@ -15,11 +15,21 @@ export interface AccountRow {
   closed_on: string | null;
   notes: string | null;
   firms: { name: string } | null;
-  origin: { id: string; label: string } | null;
+  /** Se completa aparte (no con un embed: en una relación de la tabla consigo misma era ambiguo). */
+  origin?: { id: string; label: string } | null;
+}
+
+async function attachOrigins(supabase: Awaited<ReturnType<typeof requireUser>>["supabase"], rows: AccountRow[]) {
+  const ids = [...new Set(rows.map((r) => r.origin_account_id).filter((x): x is string => Boolean(x)))];
+  if (ids.length === 0) return rows.map((r) => ({ ...r, origin: null }));
+  const { data } = await supabase.from("accounts").select("id,label").in("id", ids).is("deleted_at", null)
+    .returns<{ id: string; label: string }[]>();
+  const byId = new Map((data ?? []).map((o) => [o.id, o]));
+  return rows.map((r) => ({ ...r, origin: r.origin_account_id ? (byId.get(r.origin_account_id) ?? null) : null }));
 }
 
 export const ACCOUNT_COLUMNS =
-  "id,firm_id,label,external_id,plan_name,nominal_size::text,phase,status,origin_account_id,opened_on,closed_on,notes,firms(name),origin:accounts!origin_account_id(id,label)";
+  "id,firm_id,label,external_id,plan_name,nominal_size::text,phase,status,origin_account_id,opened_on,closed_on,notes,firms(name)";
 
 export async function listAccounts(filter: { firm?: string; status?: string } = {}): Promise<AccountRow[]> {
   const { supabase } = await requireUser();
@@ -28,7 +38,7 @@ export async function listAccounts(filter: { firm?: string; status?: string } = 
   if (filter.status) q = q.eq("status", filter.status);
   const { data, error } = await q.order("opened_on", { ascending: false, nullsFirst: false }).order("label").returns<AccountRow[]>();
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return attachOrigins(supabase, data ?? []);
 }
 
 export async function getAccount(id: string) {
@@ -49,7 +59,8 @@ export async function getAccount(id: string) {
     .eq("origin_account_id", id)
     .is("deleted_at", null)
     .maybeSingle<{ id: string; label: string }>();
-  return { account, history: history ?? [], fundedFrom: account.origin, fundedChild: child };
+  const [withOrigin] = await attachOrigins(supabase, [account]);
+  return { account: withOrigin, history: history ?? [], fundedFrom: withOrigin.origin ?? null, fundedChild: child };
 }
 
 /** Empresas y cuentas para los selectores del formulario. */
