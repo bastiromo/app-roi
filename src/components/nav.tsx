@@ -10,18 +10,19 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", href: "/gastos" },
   { label: "Payouts", href: "/payouts" },
+  { label: "Importar", href: "/importar" },
 ];
 
 export function Nav({ orientation }: { orientation: "vertical" | "horizontal" }) {
   const path = usePathname();
   const vertical = orientation === "vertical";
   return (
-    <nav aria-label="Principal" className={vertical ? "flex flex-col gap-0.5" : "grid grid-cols-5"}>
+    <nav aria-label="Principal" className={vertical ? "flex flex-col gap-0.5" : "grid grid-cols-6"}>
       {ITEMS.map((item) => {
         const active = item.href === "/" ? path === "/" : !!item.href && path.startsWith(item.href);
         const base = vertical
           ? "flex items-center justify-between rounded-lg px-2 py-2 text-sm"
-          : "flex flex-col items-center py-3 text-xs";
+          : "flex flex-col items-center py-3 text-[11px]";
         if (!item.href) {
           return (
             <span key={item.label} aria-disabled="true" title={`Disponible en ${item.stage}`} className={`${base} text-ink-3`}>

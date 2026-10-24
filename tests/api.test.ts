@@ -7,6 +7,9 @@
 import { createHmac } from "node:crypto";
 import { PostgrestClient } from "@supabase/postgrest-js";
 import { beforeAll, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { buildPreview, revertBatch, runImport } from "../src/lib/import";
 import { Q } from "../src/lib/queries";
 
 const URL = process.env.POSTGREST_URL;
@@ -125,5 +128,47 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
       .from("fx_rates")
       .upsert({ rate_date: "2026-10-20", usd_clp: "950.00", source: "dolar_observado" }, { onConflict: "user_id,rate_date,source", ignoreDuplicates: true });
     expect(error).toBeNull();
+  });
+
+  describe("importar historial real de Lucid", () => {
+    const fx = async () => ({ rate: "950" });
+    const csv = (f: string) => readFileSync(join(__dirname, "fixtures", f), "utf8");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = db as any;
+
+    it("órdenes: vista previa, importación y reimportación sin duplicar", async () => {
+      const pre = await buildPreview(client, fx, csv("lucid_orders_2026-10-24.csv"), null);
+      expect(pre.kind).toBe("expenses");
+      expect(pre.counts).toEqual({ new: 57, duplicate: 0, error: 0 });
+      expect(pre.totalUsd).toMatch(/5\.032,40/);
+      const r = await runImport(client, fx, csv("lucid_orders_2026-10-24.csv"), null, new Date("2026-10-24T08:00:00Z"));
+      expect(r.ok, r.message).toBe(true);
+      const again = await buildPreview(client, fx, csv("lucid_orders_2026-10-24.csv"), null);
+      expect(again.counts).toEqual({ new: 0, duplicate: 57, error: 0 });
+    });
+
+    it("payouts: crea 7 cuentas, recibido estimado 13.241,53 (90 % − 25) y se puede deshacer", async () => {
+      const pre = await buildPreview(client, fx, csv("lucid_payouts_2026-10-24.csv"), null);
+      expect(pre.counts).toEqual({ new: 12, duplicate: 0, error: 0 });
+      expect(pre.newAccounts).toHaveLength(7);
+      expect(pre.totalUsd).toMatch(/13\.241,53/);
+      const r = await runImport(client, fx, csv("lucid_payouts_2026-10-24.csv"), null, new Date("2026-10-24T08:01:00Z"));
+      expect(r.ok, r.message).toBe(true);
+
+      const ids = ((await db.from("payouts").select("id").eq("source", r.batch!)).data ?? []).map((p) => p.id as string);
+      expect(ids).toHaveLength(12);
+      const flows = await db.from("cash_flows").select(Q.flowsByPayout).in("payout_id", ids);
+      const sum = (flows.data ?? []).reduce((t, f) => t + Math.round(Number((f as unknown as { amount_usd: string }).amount_usd) * 100), 0);
+      expect(sum / 100).toBe(13241.53);
+
+      const again = await buildPreview(client, fx, csv("lucid_payouts_2026-10-24.csv"), null);
+      expect(again.counts.duplicate).toBe(12);
+
+      await revertBatch(client, r.batch!);
+      const left = await db.from("payouts").select("id").eq("source", r.batch!).is("deleted_at", null);
+      expect(left.data).toHaveLength(0);
+      const accs = await db.from("accounts").select("id").like("notes", `%${r.batch}%`).is("deleted_at", null);
+      expect(accs.data).toHaveLength(0);
+    });
   });
 });
