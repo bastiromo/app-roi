@@ -57,6 +57,10 @@ export async function proxy(request: NextRequest) {
     aal?.currentLevel === "aal2" ||
     (hasFactor && (await isTrustedDevice(supabase, request.cookies.get(TRUST_COOKIE)?.value)));
 
+  // Las acciones de servidor (POST con cabecera next-action) nunca se redirigen: cada acción
+  // verifica la sesión por sí misma, y una redirección aquí deja la acción sin respuesta.
+  if (request.headers.has("next-action")) return response;
+
   if (!hasFactor && path !== "/seguridad/2fa") return redirect("/seguridad/2fa");
   if (hasFactor && !verified && path !== "/login/2fa") return redirect("/login/2fa");
   if (verified && (path === "/login" || path === "/registro" || path === "/login/2fa" || path === "/seguridad/2fa")) return redirect("/");

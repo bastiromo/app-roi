@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: isAdmin } = await supabase.rpc("is_admin");
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
-      <aside className="hidden border-r border-line bg-surface md:flex md:flex-col md:px-4 md:py-6">
+      <aside className="hidden border-r border-line bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:overflow-y-auto md:px-4 md:py-6">
         <div className="mb-8 flex items-center gap-2.5 px-2">
           <LedgerMark size={26} />
           <span className="font-semibold tracking-tight">App ROI</span>

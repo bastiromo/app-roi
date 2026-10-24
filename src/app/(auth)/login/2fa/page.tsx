@@ -31,7 +31,10 @@ export default function TwoFactorPage() {
       setBusy(false);
       return;
     }
-    if (remember) await rememberThisDevice();
+    if (remember) {
+      // Si recordar el dispositivo falla o tarda, igual se entra: no debe bloquear el ingreso
+      await Promise.race([rememberThisDevice().catch(() => null), new Promise((r) => setTimeout(r, 6000))]);
+    }
     router.replace("/");
     router.refresh();
   }
