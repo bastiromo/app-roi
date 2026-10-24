@@ -121,6 +121,10 @@ export default async function DashboardPage() {
 /** La pieza central: la ecuación del libro mayor, leída de izquierda a derecha. */
 function Equation(props: { received: Decimal; estimated: Decimal; costs: Decimal; profit: Decimal; roi: Decimal | null }) {
   const hasEstimate = !props.estimated.isZero();
+  // Solo dinero con monto real registrado (no estimado con la regla de la empresa)
+  const confirmed = props.received.sub(props.estimated);
+  const confirmedProfit = confirmed.sub(props.costs);
+  const allEstimated = hasEstimate && confirmed.isZero();
   return (
     <section aria-label="Resultado acumulado" className="rounded-xl border border-line bg-surface p-5 md:p-8">
       <div className="grid gap-5 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-end md:gap-6">
@@ -132,7 +136,7 @@ function Equation(props: { received: Decimal; estimated: Decimal; costs: Decimal
       </div>
       <div className="mt-6 flex flex-wrap items-baseline justify-between gap-3 border-t border-line pt-5">
         <p className="text-sm text-ink-2">
-          ROI antes de impuestos{" "}
+          ROI antes de impuestos{hasEstimate && <span className="text-estimate"> (estimado)</span>}{" "}
           <span className="num ml-2 text-3xl font-semibold tracking-tight text-ink md:text-4xl">{formatPct(props.roi)}</span>
         </p>
         {hasEstimate && (
@@ -141,6 +145,21 @@ function Equation(props: { received: Decimal; estimated: Decimal; costs: Decimal
           </p>
         )}
       </div>
+      {hasEstimate && (
+        <p className="mt-3 text-sm text-ink-2">
+          {allEstimated ? (
+            <>
+              Confirmado: aún ningún monto real. Cuando sepas cuánto llegó exactamente en un payout, regístralo como{" "}
+              <em>monto real</em> y aparecerá aquí.
+            </>
+          ) : (
+            <>
+              Solo con montos reales: recibido <span className="num">{formatMoney(confirmed, "usd")}</span>, beneficio{" "}
+              <span className="num">{formatMoney(confirmedProfit, "usd")}</span>.
+            </>
+          )}
+        </p>
+      )}
     </section>
   );
 }

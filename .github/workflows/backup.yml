@@ -1,7 +1,8 @@
 name: Respaldo nocturno
 
 # Todas las noches (~04:17 hora de Chile) exporta la base completa del esquema public,
-# la cifra con BACKUP_PASSPHRASE y la guarda como artefacto privado por 30 días.
+# la cifra con BACKUP_PASSPHRASE, comprueba que se restaura idéntica en una base limpia
+# y la guarda como artefacto privado por 30 días.
 # Además mantiene activo el proyecto gratuito de Supabase (evita la pausa por inactividad).
 on:
   schedule:
@@ -11,7 +12,17 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    services:
+      # Base vacía y desechable para comprobar que el respaldo se restaura de verdad
+      restore:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
+      - uses: actions/checkout@v4
       - name: Exportar base (pg_dump 17)
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -29,7 +40,19 @@ jobs:
           gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
               --symmetric --cipher-algo AES256 -o "app-roi-$STAMP.dump.gpg" app-roi.dump
           rm app-roi.dump
+      - name: Probar restauración (descifrar, restaurar y comparar con la base)
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          SOURCE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TARGET_URL: postgres://postgres:restore@localhost:5432/postgres
+        run: |
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+              -o restaurado.dump -d "app-roi-$STAMP.dump.gpg"
+          docker run --rm --network host -v "$PWD:/w" -e SOURCE_URL -e TARGET_URL postgres:17 \
+            bash /w/scripts/restore-check.sh /w/restaurado.dump
+          rm restaurado.dump
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}   # se guarda aunque la prueba de restauración falle
         with:
           name: respaldo-${{ env.STAMP }}
           path: app-roi-*.dump.gpg

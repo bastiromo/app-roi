@@ -126,6 +126,15 @@ select pg_temp.must_fail(format($q$insert into receipt_allocations (receipt_id, 
   pg_temp.id('rec_0xaaa'), pg_temp.id('pay_a2')), 'dinero recibido en payout no pagado');
 select pg_temp.must_fail(format($q$update payouts set status = 'requested' where id = %L$q$, pg_temp.id('pay_a1')),
   'transición pagado → solicitado');
+-- Lo asignado no puede superar el recibo (revisado al final de la transacción; aquí, en el acto)
+begin;
+set constraints all immediate;
+select pg_temp.must_fail(format($q$update receipt_allocations set amount = 1780.01 where payout_id = %L$q$, pg_temp.id('pay_a1')),
+  'asignar más que el monto del recibo');
+update receipt_allocations set amount = 1780 where payout_id = pg_temp.id('pay_a1');
+select pg_temp.must_fail(format($q$update receipts set amount = 100 where id = %L$q$, pg_temp.id('rec_0xaaa')),
+  'bajar el recibo por debajo de lo asignado');
+rollback;
 select pg_temp.must_fail(format($q$update payouts set status = 'paid' where id = %L$q$, pg_temp.id('pay_a2'))
   || '; ' || format($q$update payouts set status = 'rejected' where id = %L$q$, pg_temp.id('pay_a2')),
   'transición pagado → rechazado');
@@ -261,6 +270,16 @@ select pg_temp.assert(not (select check_trusted_device(repeat('a', 64))) and (se
 select pg_temp.must_fail($q$insert into invitations (email) values ('x@example.com')$q$, 'no administrador no puede invitar');
 select pg_temp.must_fail(format($q$insert into firms (user_id, name) values (%L, 'intrusa')$q$,
   '11111111-1111-1111-1111-111111111111'), 'escribir filas de otro usuario');
+-- Aunque conozca los identificadores, no puede vincular filas ajenas a las suyas
+with r as (insert into receipts (received_on, amount, currency, fx_usd_clp) values ('2026-10-05', 10, 'USDT', 950) returning id)
+insert into ids select 'rec_otro', id from r;
+select pg_temp.must_fail(format($q$insert into receipt_allocations (receipt_id, payout_id) values (%L, %L)$q$,
+  pg_temp.id('rec_otro'), pg_temp.id('pay_a1')), 'asignar su recibo a un payout ajeno');
+select pg_temp.must_fail(format($q$insert into accounts (firm_id, label, phase) values (%L, 'robada', 'evaluacion')$q$,
+  pg_temp.id('firm_A')), 'crear cuenta en una empresa ajena');
+select pg_temp.must_fail(format(
+  $q$insert into expenses (occurred_on, category, amount, currency, fx_usd_clp, account_id) values ('2026-10-05', 'evaluacion', 1, 'USD', 950, %L)$q$,
+  pg_temp.id('acc_a1')), 'cargar un gasto a una cuenta ajena');
 
 reset role;
 set role anon;
