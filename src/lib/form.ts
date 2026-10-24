@@ -3,6 +3,8 @@ import type { ZodError } from "zod";
 /** Estado que devuelven las acciones de formulario. */
 export interface FormState {
   message?: string;
+  /** Advertencia que se puede confirmar (ej. posible duplicado). */
+  warning?: string;
   errors?: Record<string, string>;
   values?: Record<string, string>;
 }

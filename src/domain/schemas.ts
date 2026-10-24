@@ -131,3 +131,81 @@ export const approvalSchema = z.object({
   external_id: optionalText,
   approved_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Indica la fecha de aprobación."),
 });
+
+// ---------------------------------------------------------------------------
+// Gastos
+// ---------------------------------------------------------------------------
+export const CATEGORIES = [
+  "evaluacion",
+  "activacion",
+  "reset",
+  "suscripcion",
+  "plataforma",
+  "datos_mercado",
+  "comision_bancaria",
+  "comision_red",
+  "otros",
+] as const;
+
+export const CATEGORY_LABEL: Record<(typeof CATEGORIES)[number], string> = {
+  evaluacion: "Evaluación",
+  activacion: "Activación",
+  reset: "Reset",
+  suscripcion: "Suscripción",
+  plataforma: "Plataforma",
+  datos_mercado: "Datos de mercado",
+  comision_bancaria: "Comisión bancaria",
+  comision_red: "Comisión de red (cripto)",
+  otros: "Otros",
+};
+
+export const CURRENCIES = ["USD", "USDT", "USDC", "CLP"] as const;
+export const EXPENSE_STATUSES = ["paid", "pending", "failed", "void"] as const;
+export const EXPENSE_STATUS_LABEL: Record<(typeof EXPENSE_STATUSES)[number], string> = {
+  paid: "Pagado",
+  pending: "Pendiente",
+  failed: "Fallido",
+  void: "Anulado",
+};
+
+const optionalUuid = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v : null))
+  .pipe(z.uuid().nullable());
+
+export const expenseSchema = z
+  .object({
+    kind: z.enum(["cost", "refund"]),
+    refund_of_id: optionalUuid,
+    status: z.enum(EXPENSE_STATUSES),
+    occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Indica la fecha."),
+    firm_id: optionalUuid,
+    account_id: optionalUuid,
+    category: z.enum(CATEGORIES, "Elige una categoría."),
+    description: optionalText,
+    amount: decimal("Monto", { min: 0.0001, required: true }),
+    currency: z.enum(CURRENCIES),
+    usd_rate: decimal("Valor en USD de 1 unidad", { min: 0.0001 }),
+    fx_usd_clp: decimal("Dólar en pesos", { min: 1, required: true }),
+    fx_source: z.enum(["manual", "dolar_observado"]).default("manual"),
+    external_ref: optionalText,
+    tx_hash: optionalText,
+    confirm_duplicate: checkbox,
+  })
+  .superRefine((x, ctx) => {
+    if (x.kind === "refund" && !x.refund_of_id) {
+      ctx.addIssue({ code: "custom", path: ["refund_of_id"], message: "Elige el gasto que te reembolsaron." });
+    }
+    if (x.account_id && !x.firm_id) {
+      ctx.addIssue({ code: "custom", path: ["account_id"], message: "Para vincular una cuenta, elige primero la empresa." });
+    }
+  })
+  .transform(({ confirm_duplicate, ...x }) => ({
+    data: {
+      ...x,
+      refund_of_id: x.kind === "refund" ? x.refund_of_id : null,
+      usd_rate: x.currency === "USDT" || x.currency === "USDC" ? (x.usd_rate ?? "1") : null,
+    },
+    confirmDuplicate: confirm_duplicate,
+  }));

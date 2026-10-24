@@ -8,7 +8,7 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Resumen", href: "/" },
   { label: "Empresas", href: "/empresas" },
   { label: "Cuentas", href: "/cuentas" },
-  { label: "Gastos", stage: "Etapa 3" },
+  { label: "Gastos", href: "/gastos" },
   { label: "Payouts", stage: "Etapa 4" },
 ];
 

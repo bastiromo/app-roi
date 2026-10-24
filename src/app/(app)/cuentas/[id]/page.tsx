@@ -36,6 +36,11 @@ export default async function EditAccountPage({
             <LinkButton href={`/cuentas/${a.id}/aprobar`}>Aprobé esta evaluación</LinkButton>
           </section>
         )}
+        <p className="text-sm">
+          <Link href={`/gastos/nuevo?cuenta=${a.id}`} className="font-medium text-ink underline">
+            Registrar un gasto de esta cuenta
+          </Link>
+        </p>
         {fundedChild && (
           <p className="text-sm text-ink-2">
             Aprobada el {formatDate(a.closed_on)}. Se convirtió en{" "}
