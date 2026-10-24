@@ -11,6 +11,7 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Gastos", href: "/gastos" },
   { label: "Payouts", href: "/payouts" },
   { label: "Importar", href: "/importar" },
+  { label: "Exportar", href: "/exportar" },
 ];
 
 export function Nav({ orientation, large = false, admin = false }: { orientation: "vertical" | "horizontal"; large?: boolean; admin?: boolean }) {

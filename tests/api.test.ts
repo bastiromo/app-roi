@@ -9,6 +9,9 @@ import { PostgrestClient } from "@supabase/postgrest-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import ExcelJS from "exceljs";
+import { parseImport } from "../src/domain/importer";
+import { buildWorkbook, expensesCsv, payoutsCsv } from "../src/lib/export";
 import { buildPreview, revertBatch, runImport } from "../src/lib/import";
 import { Q } from "../src/lib/queries";
 
@@ -181,6 +184,24 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
 
       const again = await buildPreview(client, fx, csv("lucid_payouts_2026-10-24.csv"), null);
       expect(again.counts.duplicate).toBe(12);
+
+      // Exportar → el CSV vuelve a leerse con el importador sin errores, y todo figura como "ya existe"
+      const pcsv = await payoutsCsv(client);
+      const pp = parseImport(pcsv);
+      expect(pp.kind).toBe("payouts");
+      expect(pp.errors).toEqual([]);
+      expect((await buildPreview(client, fx, pcsv, null)).counts.new).toBe(0);
+      const { text: ecsv } = await expensesCsv(client);
+      const ep = parseImport(ecsv);
+      expect(ep.kind).toBe("expenses");
+      expect(ep.errors).toEqual([]);
+      expect((await buildPreview(client, fx, ecsv, null)).counts.new).toBe(0);
+
+      const wb = new ExcelJS.Workbook();
+      const xbuf = await buildWorkbook(client, "test@example.com");
+      await wb.xlsx.load(xbuf.buffer.slice(xbuf.byteOffset, xbuf.byteOffset + xbuf.byteLength) as ArrayBuffer);
+      expect(wb.worksheets.map((w) => w.name)).toEqual(["Resumen", "Gastos", "Payouts", "Cuentas", "Empresas"]);
+      expect(wb.getWorksheet("Payouts")!.rowCount).toBeGreaterThanOrEqual(13);
 
       await revertBatch(client, r.batch!);
       const left = await db.from("payouts").select("id").eq("source", r.batch!).is("deleted_at", null);
