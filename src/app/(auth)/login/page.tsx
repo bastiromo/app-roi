@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Button, Field, Notice } from "@/components/ui";
@@ -46,6 +47,12 @@ function LoginForm() {
       <Button type="submit" disabled={busy} className="w-full">
         {busy ? "Ingresando…" : "Ingresar"}
       </Button>
+      <p className="pt-2 text-center text-sm text-ink-2">
+        ¿Te invitaron?{" "}
+        <Link href="/registro" className="font-medium text-ink underline">
+          Crea tu cuenta
+        </Link>
+      </p>
     </form>
   );
 }

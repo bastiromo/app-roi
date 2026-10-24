@@ -13,12 +13,13 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Importar", href: "/importar" },
 ];
 
-export function Nav({ orientation, large = false }: { orientation: "vertical" | "horizontal"; large?: boolean }) {
+export function Nav({ orientation, large = false, admin = false }: { orientation: "vertical" | "horizontal"; large?: boolean; admin?: boolean }) {
   const path = usePathname();
+  const items = admin ? [...ITEMS, { label: "Invitaciones", href: "/invitaciones" }] : ITEMS;
   const vertical = orientation === "vertical";
   return (
     <nav aria-label="Principal" className={vertical ? "flex flex-col gap-0.5" : "grid grid-cols-6"}>
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active = item.href === "/" ? path === "/" : !!item.href && path.startsWith(item.href);
         const base = vertical
           ? `flex items-center justify-between rounded-lg px-2 ${large ? "py-3 text-base" : "py-2 text-sm"}`

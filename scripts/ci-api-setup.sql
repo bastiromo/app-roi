@@ -6,4 +6,4 @@ do $$ begin
 end $$;
 grant anon, authenticated to authenticator;
 insert into auth.users values ('11111111-1111-1111-1111-111111111111', 'basti@example.com');
-select app.seed_default_firms('11111111-1111-1111-1111-111111111111');
+-- (las empresas iniciales se cargan solas con el trigger de alta de usuario)

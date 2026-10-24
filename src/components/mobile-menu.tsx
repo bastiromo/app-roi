@@ -4,9 +4,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LedgerMark } from "./ledger-mark";
 import { Nav } from "./nav";
+import { ThemeSwitch } from "./theme-switch";
 
 /** Barra superior del celular con botón de menú (hamburguesa) que abre un panel lateral. */
-export function MobileMenu({ email, signOut }: { email: string; signOut: () => Promise<void> }) {
+export function MobileMenu({ email, signOut, admin = false }: { email: string; signOut: () => Promise<void>; admin?: boolean }) {
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState<string | null>(null);
   const path = usePathname();
@@ -71,8 +72,11 @@ export function MobileMenu({ email, signOut }: { email: string; signOut: () => P
                 </svg>
               </button>
             </div>
-            <Nav orientation="vertical" large />
-            <form action={signOut} className="mt-auto border-t border-line px-2 pt-4">
+            <Nav orientation="vertical" large admin={admin} />
+            <div className="mt-auto border-t border-line pt-3">
+              <ThemeSwitch />
+            </div>
+            <form action={signOut} className="mt-2 border-t border-line px-2 pt-4">
               <p className="truncate text-xs text-ink-3">{email}</p>
               <button className="mt-1 text-sm text-ink-2 hover:text-ink">Cerrar sesión</button>
             </form>

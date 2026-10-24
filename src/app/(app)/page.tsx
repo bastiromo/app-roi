@@ -169,7 +169,39 @@ function FirmTable({ rows }: { rows: FirmResult[] }) {
       <h2 id="por-empresa" className="mb-3 font-semibold">
         Por empresa
       </h2>
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      {/* Celular: una tarjeta por empresa, todos los números visibles */}
+      <ul className="space-y-3 md:hidden">
+        {rows.map((f) => (
+          <li key={f.firmId ?? "general"} className="rounded-xl border border-line bg-surface p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              {f.firmId ? (
+                <Link href={`/gastos?empresa=${f.firmId}`} className="font-semibold text-ink">
+                  {f.name}
+                </Link>
+              ) : (
+                <span className="font-semibold text-ink-2">{f.name}</span>
+              )}
+              <span className="num text-lg font-semibold">{formatPct(f.roiPct)}</span>
+            </div>
+            <dl className="num mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <dt className="text-ink-2">Costos</dt>
+              <dd className="text-right">{formatMoney(f.costs, "usd")}</dd>
+              <dt className="text-ink-2">Recibido</dt>
+              <dd className={`text-right ${f.receivedEstimated.isZero() ? "" : "est"}`}>{formatMoney(f.received, "usd")}</dd>
+              <dt className="text-ink-2">Beneficio</dt>
+              <dd className={`text-right font-semibold ${f.profit.isNegative() ? "text-debit" : "text-ink"}`}>{formatMoney(f.profit, "usd")}</dd>
+              {!f.pending.isZero() && (
+                <>
+                  <dt className="text-ink-2">Por cobrar</dt>
+                  <dd className="text-right text-ink-2">{formatMoney(f.pending, "usd")}</dd>
+                </>
+              )}
+            </dl>
+          </li>
+        ))}
+      </ul>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-line bg-surface md:block">
         <table className="w-full min-w-[40rem] text-sm">
           <thead className="text-left text-ink-2">
             <tr className="border-b border-line">

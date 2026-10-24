@@ -110,6 +110,14 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
     expect((await db.from("payouts").select(Q.paidPayouts).eq("status", "paid")).error).toBeNull();
   });
 
+  it("invitaciones (administrador) e is_admin", async () => {
+    expect((await db.rpc("is_admin")).data).toBe(true);
+    const ins = await db.from("invitations").insert({ email: "api-amiga@example.com" }).select("id").single();
+    expect(ins.error).toBeNull();
+    expect((await db.from("invitations").select("id,email,created_at,expires_at,used_at")).error).toBeNull();
+    expect((await db.from("invitations").delete().eq("id", ins.data!.id)).error).toBeNull();
+  });
+
   it("resumen: vista de flujos", async () => {
     const { data, error } = await db.from("cash_flows").select(Q.flowsSummary);
     expect(error).toBeNull();

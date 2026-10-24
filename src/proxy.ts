@@ -1,16 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { isConfigured, isEmailAllowed, SUPABASE_KEY, SUPABASE_URL } from "@/lib/env";
+import { isConfigured, SUPABASE_KEY, SUPABASE_URL } from "@/lib/env";
 
 /**
  * Se ejecuta antes de cada página:
  *  1. Refresca la sesión de Supabase (cookies).
  *  2. Sin sesión → /login.
- *  3. Correo no autorizado → cierra sesión.
+ *  3. (El acceso por invitación lo controla la base de datos.)
  *  4. Sin 2FA configurado → /seguridad/2fa (obligatorio).
  *  5. 2FA configurado pero no verificado en esta sesión → /login/2fa.
  */
-const PUBLIC_PATHS = ["/login", "/configuracion-pendiente"];
+const PUBLIC_PATHS = ["/login", "/registro", "/configuracion-pendiente"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -48,10 +48,6 @@ export async function proxy(request: NextRequest) {
     return PUBLIC_PATHS.some((p) => path === p) ? response : redirect("/login");
   }
 
-  if (!isEmailAllowed(claims.email as string | undefined)) {
-    await supabase.auth.signOut();
-    return redirect("/login?error=no-autorizado");
-  }
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   const hasFactor = aal?.nextLevel === "aal2";
@@ -59,7 +55,7 @@ export async function proxy(request: NextRequest) {
 
   if (!hasFactor && path !== "/seguridad/2fa") return redirect("/seguridad/2fa");
   if (hasFactor && !verified && path !== "/login/2fa") return redirect("/login/2fa");
-  if (verified && (path === "/login" || path === "/login/2fa" || path === "/seguridad/2fa")) return redirect("/");
+  if (verified && (path === "/login" || path === "/registro" || path === "/login/2fa" || path === "/seguridad/2fa")) return redirect("/");
 
   return response;
 }

@@ -3,9 +3,11 @@
 \set ON_ERROR_STOP on
 \set QUIET on
 
-insert into auth.users values
-  ('11111111-1111-1111-1111-111111111111', 'basti@example.com'),
-  ('22222222-2222-2222-2222-222222222222', 'otro@example.com');
+-- Primer usuario del sistema: entra sin invitación y queda como administrador
+insert into auth.users values ('11111111-1111-1111-1111-111111111111', 'basti@example.com');
+-- Los demás, solo con invitación (MAYÚSCULAS a propósito: el correo no distingue mayúsculas)
+insert into public.invitations (email, invited_by) values ('Otro@Example.com', '11111111-1111-1111-1111-111111111111');
+insert into auth.users values ('22222222-2222-2222-2222-222222222222', 'otro@example.com');
 
 -- Siembra de empresas (dos veces: debe ser idempotente)
 select app.seed_default_firms('11111111-1111-1111-1111-111111111111');
@@ -202,6 +204,33 @@ select pg_temp.assert((select restore_accounts(array[pg_temp.id('eval')])) = 1, 
 select pg_temp.assert((select deleted_at is null from accounts where id = pg_temp.id('eval')), 'la cuenta vuelve a estar visible');
 select pg_temp.assert((select delete_accounts(array[pg_temp.id('eval'), pg_temp.id('funded')])) = 2, 'eliminar varias a la vez');
 
+-- Registro por invitación
+create or replace function pg_temp.must_fail_su(sql text, msg text) returns void language plpgsql as $$
+begin
+  begin execute sql; exception when others then raise notice 'ok  rechaza: % (%)', msg, sqlerrm; return; end;
+  raise exception 'FALLÓ: debía rechazar: %', msg;
+end $$;
+reset role;
+select pg_temp.assert((select count(*) from app_admins) = 1
+                      and exists (select 1 from app_admins where user_id = '11111111-1111-1111-1111-111111111111'),
+                      'el primer usuario es el único administrador');
+select pg_temp.assert((select used_by = '22222222-2222-2222-2222-222222222222' from invitations where lower(email) = 'otro@example.com'),
+                      'la invitación queda usada por el nuevo usuario');
+select pg_temp.assert((select count(*) from firms where user_id = '22222222-2222-2222-2222-222222222222') = 11,
+                      'el nuevo usuario recibe sus 11 empresas iniciales');
+select pg_temp.must_fail_su($q$insert into auth.users values ('33333333-3333-3333-3333-333333333333', 'intruso@example.com')$q$,
+                            'registrarse sin invitación');
+insert into invitations (email, expires_at) values ('vencida@example.com', now() - interval '1 day');
+select pg_temp.must_fail_su($q$insert into auth.users values ('44444444-4444-4444-4444-444444444444', 'vencida@example.com')$q$,
+                            'invitación vencida');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+select pg_temp.assert((select is_admin()), 'is_admin() verdadero para el administrador');
+insert into invitations (email) values ('amiga@example.com');
+select pg_temp.assert((select count(*) from invitations) >= 3, 'el administrador ve y crea invitaciones');
+select pg_temp.must_fail($q$insert into invitations (email) values ('amiga@example.com')$q$, 'invitación pendiente duplicada');
+select pg_temp.must_fail($q$update invitations set used_at = now()$q$, 'marcar invitación como usada a mano');
+
 -- Auditoría y aislamiento
 update expenses set description = 'editado' where external_ref = 'A-1';
 select pg_temp.assert(
@@ -213,7 +242,10 @@ select pg_temp.assert((select count(*) from account_status_history) = 7, 'histor
 
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 select pg_temp.assert((select count(*) from expenses) = 0 and (select count(*) from cash_flows) = 0
-                      and (select count(*) from audit_log) = 0, 'otro usuario no ve nada (RLS)');
+                      and (select count(*) from audit_log where user_id <> auth.uid()) = 0
+                      and (select count(*) from firms) = 11, 'otro usuario solo ve sus propios datos (RLS)');
+select pg_temp.assert(not (select is_admin()) and (select count(*) from invitations) = 0, 'no administrador no ve invitaciones');
+select pg_temp.must_fail($q$insert into invitations (email) values ('x@example.com')$q$, 'no administrador no puede invitar');
 select pg_temp.must_fail(format($q$insert into firms (user_id, name) values (%L, 'intrusa')$q$,
   '11111111-1111-1111-1111-111111111111'), 'escribir filas de otro usuario');
 

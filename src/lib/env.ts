@@ -6,15 +6,4 @@ export const SUPABASE_KEY =
 
 export const isConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
-/** Correos autorizados a usar la app (solo servidor). Vacío = cualquiera con cuenta en Supabase. */
-export function allowedEmails(): string[] {
-  return (process.env.ALLOWED_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isEmailAllowed(email: string | undefined | null): boolean {
-  const list = allowedEmails();
-  return list.length === 0 || (!!email && list.includes(email.toLowerCase()));
-}
+// El acceso se controla por invitación en la base de datos (ver migración 20261024000007).
