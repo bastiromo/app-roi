@@ -147,11 +147,11 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
       expect(again.counts).toEqual({ new: 0, duplicate: 57, error: 0 });
     });
 
-    it("payouts: crea 7 cuentas, recibido estimado 13.241,53 (90 % − 25) y se puede deshacer", async () => {
+    it("payouts: crea 7 cuentas, recibido estimado 13.241,55 (90 % − 25, al centavo por payout) y se puede deshacer", async () => {
       const pre = await buildPreview(client, fx, csv("lucid_payouts_2026-10-24.csv"), null);
       expect(pre.counts).toEqual({ new: 12, duplicate: 0, error: 0 });
       expect(pre.newAccounts).toHaveLength(7);
-      expect(pre.totalUsd).toMatch(/13\.241,53/);
+      expect(pre.totalUsd).toMatch(/13\.241,55/);
       const r = await runImport(client, fx, csv("lucid_payouts_2026-10-24.csv"), null, new Date("2026-10-24T08:01:00Z"));
       expect(r.ok, r.message).toBe(true);
 
@@ -159,7 +159,7 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
       expect(ids).toHaveLength(12);
       const flows = await db.from("cash_flows").select(Q.flowsByPayout).in("payout_id", ids);
       const sum = (flows.data ?? []).reduce((t, f) => t + Math.round(Number((f as unknown as { amount_usd: string }).amount_usd) * 100), 0);
-      expect(sum / 100).toBe(13241.53);
+      expect(sum / 100).toBe(13241.55);
 
       const again = await buildPreview(client, fx, csv("lucid_payouts_2026-10-24.csv"), null);
       expect(again.counts.duplicate).toBe(12);

@@ -19,7 +19,8 @@ export function estimatePayoutNet(p: Payout): Decimal {
  */
 export function estimateReceipt(p: Payout, firm: Firm, fxUsdClp: string): Receipt {
   if (p.status !== "paid") throw new Error(`Solo se estima el recibo de un payout pagado (${p.id} está "${p.status}")`);
-  const amount = estimatePayoutNet(p).sub(d(firm.defaultTransferFee));
+  // Redondeado al centavo por payout: cada transferencia real llega en centavos exactos.
+  const amount = estimatePayoutNet(p).sub(d(firm.defaultTransferFee)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   if (amount.isNegative()) throw new Error(`La comisión supera el neto del payout ${p.id}`);
   return {
     id: `est-${p.id}`,
