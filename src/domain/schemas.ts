@@ -125,3 +125,9 @@ export const accountSchema = z
       ctx.addIssue({ code: "custom", path: ["closed_on"], message: "Indica la fecha de cierre o pérdida." });
     }
   });
+
+export const approvalSchema = z.object({
+  label: z.string().trim().min(1, "Escribe el nombre de la cuenta financiada (ej. PRO001).").max(80),
+  external_id: optionalText,
+  approved_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Indica la fecha de aprobación."),
+});

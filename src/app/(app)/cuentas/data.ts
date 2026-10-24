@@ -15,10 +15,11 @@ export interface AccountRow {
   closed_on: string | null;
   notes: string | null;
   firms: { name: string } | null;
+  origin: { id: string; label: string } | null;
 }
 
 export const ACCOUNT_COLUMNS =
-  "id,firm_id,label,external_id,plan_name,nominal_size::text,phase,status,origin_account_id,opened_on,closed_on,notes,firms(name)";
+  "id,firm_id,label,external_id,plan_name,nominal_size::text,phase,status,origin_account_id,opened_on,closed_on,notes,firms(name),origin:accounts!origin_account_id(id,label)";
 
 export async function listAccounts(filter: { firm?: string; status?: string } = {}): Promise<AccountRow[]> {
   const { supabase } = await requireUser();
@@ -41,7 +42,14 @@ export async function getAccount(id: string) {
       .order("changed_at", { ascending: false })
       .returns<{ phase: AccountRow["phase"]; status: AccountRow["status"]; changed_at: string }[]>(),
   ]);
-  return account ? { account, history: history ?? [] } : null;
+  if (!account) return null;
+  const { data: child } = await supabase
+    .from("accounts")
+    .select("id,label")
+    .eq("origin_account_id", id)
+    .is("deleted_at", null)
+    .maybeSingle<{ id: string; label: string }>();
+  return { account, history: history ?? [], fundedFrom: account.origin, fundedChild: child };
 }
 
 /** Empresas y cuentas para los selectores del formulario. */

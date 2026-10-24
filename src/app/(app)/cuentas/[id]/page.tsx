@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui";
+import { LinkButton, Notice, PageHeader } from "@/components/ui";
 import { PHASE_LABEL, STATUS_LABEL } from "@/domain/schemas";
-import { inputNumber } from "@/lib/format";
+import { formatDate, inputNumber } from "@/lib/format";
 import { AccountForm } from "../account-form";
 import { accountFormOptions, getAccount } from "../data";
 
@@ -10,16 +11,49 @@ export const metadata: Metadata = { title: "Editar cuenta" };
 
 const when = new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Santiago" });
 
-export default async function EditAccountPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function EditAccountPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ aprobada?: string }>;
+}) {
+  const [{ id }, { aprobada }] = await Promise.all([params, searchParams]);
   const [found, options] = await Promise.all([getAccount(id), accountFormOptions()]);
   if (!found) notFound();
-  const { account: a, history } = found;
+  const { account: a, history, fundedFrom, fundedChild } = found;
 
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_16rem]">
       <div className="space-y-8">
         <PageHeader title={a.label} description={`${a.firms?.name ?? ""}${a.external_id ? ` (${a.external_id})` : ""}`} />
+        {aprobada && fundedFrom && (
+          <Notice tone="success">Cuenta financiada creada. {fundedFrom.label} quedó como aprobada y vinculada a esta cuenta.</Notice>
+        )}
+        {a.phase === "evaluacion" && a.status === "activa" && (
+          <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-4">
+            <p className="text-sm text-ink-2">¿Pasaste esta evaluación? Crea la cuenta financiada y quedará vinculada.</p>
+            <LinkButton href={`/cuentas/${a.id}/aprobar`}>Aprobé esta evaluación</LinkButton>
+          </section>
+        )}
+        {fundedChild && (
+          <p className="text-sm text-ink-2">
+            Aprobada el {formatDate(a.closed_on)}. Se convirtió en{" "}
+            <Link href={`/cuentas/${fundedChild.id}`} className="font-medium text-ink underline">
+              {fundedChild.label}
+            </Link>
+            .
+          </p>
+        )}
+        {fundedFrom && !aprobada && (
+          <p className="text-sm text-ink-2">
+            Salió de la evaluación{" "}
+            <Link href={`/cuentas/${fundedFrom.id}`} className="font-medium text-ink underline">
+              {fundedFrom.label}
+            </Link>
+            .
+          </p>
+        )}
         <AccountForm
           id={a.id}
           options={options}

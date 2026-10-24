@@ -90,6 +90,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                       {a.label}
                     </Link>
                     {a.external_id && <span className="block text-xs text-ink-3">{a.external_id}</span>}
+                    {a.origin && <span className="block text-xs text-ink-3">de {a.origin.label}</span>}
                   </td>
                   <td className="px-4 py-3">{a.firms?.name}</td>
                   <td className="px-4 py-3">

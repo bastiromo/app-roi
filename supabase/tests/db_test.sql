@@ -148,6 +148,23 @@ select pg_temp.must_fail($q$select app.seed_default_firms('22222222-2222-2222-22
 update payouts set trader_share_pct = 93.333333 where id = pg_temp.id('pay_a2');
 select pg_temp.assert((select trader_share_pct = 93.333333 from payouts where id = pg_temp.id('pay_a2')), '% mezclado con 6 decimales');
 
+-- Aprobar evaluación: TEST-1234 → PRO001 vinculada, en una transacción
+insert into accounts (firm_id, label, phase, opened_on) values (pg_temp.id('firm_A'), 'TEST-1234', 'evaluacion', '2026-10-01');
+insert into ids select 'eval', id from accounts where label = 'TEST-1234';
+insert into ids select 'funded', approve_evaluation(pg_temp.id('eval'), 'PRO001', 'LFF050-X-PRO001', '2026-10-10');
+select pg_temp.assert((select status = 'aprobada' and closed_on = '2026-10-10' from accounts where id = pg_temp.id('eval')),
+                      'evaluación queda aprobada con fecha');
+select pg_temp.assert((select phase = 'financiada' and status = 'activa' and origin_account_id = pg_temp.id('eval')
+                              and opened_on = '2026-10-10' and firm_id = pg_temp.id('firm_A')
+                       from accounts where id = pg_temp.id('funded')), 'financiada creada y vinculada');
+select pg_temp.must_fail(format($q$select approve_evaluation(%L, 'PRO002', null, '2026-10-11')$q$, pg_temp.id('eval')),
+                         'aprobar dos veces la misma evaluación');
+select pg_temp.must_fail(format($q$select approve_evaluation(%L, 'X', null, '2026-10-11')$q$, pg_temp.id('acc_a1')),
+                         'aprobar una cuenta que no es evaluación');
+insert into accounts (firm_id, label, phase, opened_on) values (pg_temp.id('firm_A'), 'TEST-9', 'evaluacion', '2026-10-05');
+select pg_temp.must_fail(format($q$select approve_evaluation(%L, 'PRO009', null, '2026-10-01')$q$,
+                         (select id from accounts where label = 'TEST-9')), 'aprobación anterior a la apertura');
+
 -- Auditoría y aislamiento
 update expenses set description = 'editado' where external_ref = 'A-1';
 select pg_temp.assert(
@@ -155,7 +172,7 @@ select pg_temp.assert(
   and (select old_values ->> 'description' is null and new_values ->> 'description' = 'editado'
          from audit_log where table_name = 'expenses' and action = 'UPDATE'),
   'auditoría guarda antes y después');
-select pg_temp.assert((select count(*) from account_status_history) = 3, 'historial de estado de cuentas');
+select pg_temp.assert((select count(*) from account_status_history) = 7, 'historial de estado de cuentas');
 
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 select pg_temp.assert((select count(*) from expenses) = 0 and (select count(*) from cash_flows) = 0

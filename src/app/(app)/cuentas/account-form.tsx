@@ -36,7 +36,7 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
 
   // Empresas usables: configuradas y activas, más la actual aunque esté inactiva.
   const firms = options.firms.filter((f) => (f.is_configured && f.is_active) || f.id === defaults.firm_id);
-  const origins = options.accounts.filter((a) => a.firm_id === firmId && a.id !== id);
+  const origins = options.accounts.filter((a) => a.firm_id === firmId && a.id !== id && a.phase === "evaluacion");
   const needsClose = status === "cerrada" || status === "perdida";
 
   return (
@@ -93,25 +93,21 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
           />
         </div>
         {phase !== "evaluacion" && (
-          <details className="rounded-lg border border-line bg-surface p-4" open={Boolean(v("origin_account_id"))}>
-            <summary className="cursor-pointer text-sm font-medium text-ink">¿Esta cuenta salió de otra evaluación? (opcional)</summary>
-            <p className="mt-3 text-sm text-ink-2">
-              En algunas empresas, al aprobar una evaluación te entregan una cuenta financiada <strong>nueva, con otro ID</strong> (por
-              ejemplo, en Apex). Si es tu caso, elige aquí la evaluación de la que salió, para que lo que pagaste por ella se cuente
-              en el ROI de esta cuenta.
-            </p>
-            <p className="mt-2 text-sm text-ink-2">Si es la misma cuenta que simplemente pasó a financiada, déjalo en &quot;No&quot;.</p>
-            <div className="mt-3">
-              <Select label="Evaluación de origen" name="origin_account_id" defaultValue={v("origin_account_id")} error={e.origin_account_id} disabled={!firmId}>
-                <option value="">No, es la misma cuenta</option>
-                {origins.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.label} ({PHASE_LABEL[a.phase as keyof typeof PHASE_LABEL]})
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </details>
+          <Select
+            label="Evaluación de origen"
+            name="origin_account_id"
+            defaultValue={v("origin_account_id")}
+            error={e.origin_account_id}
+            disabled={!firmId}
+            hint="La evaluación que aprobaste para obtener esta cuenta (ej. TEST-1234 → PRO001). Lo que pagaste por ella se cuenta en el ROI de esta cuenta."
+          >
+            <option value="">Sin vincular</option>
+            {origins.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label} ({PHASE_LABEL[a.phase as keyof typeof PHASE_LABEL]})
+              </option>
+            ))}
+          </Select>
         )}
         <TextArea label="Notas" name="notes" defaultValue={v("notes")} />
       </fieldset>
