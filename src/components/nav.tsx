@@ -13,7 +13,7 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Importar", href: "/importar" },
 ];
 
-export function Nav({ orientation }: { orientation: "vertical" | "horizontal" }) {
+export function Nav({ orientation, large = false }: { orientation: "vertical" | "horizontal"; large?: boolean }) {
   const path = usePathname();
   const vertical = orientation === "vertical";
   return (
@@ -21,7 +21,7 @@ export function Nav({ orientation }: { orientation: "vertical" | "horizontal" })
       {ITEMS.map((item) => {
         const active = item.href === "/" ? path === "/" : !!item.href && path.startsWith(item.href);
         const base = vertical
-          ? "flex items-center justify-between rounded-lg px-2 py-2 text-sm"
+          ? `flex items-center justify-between rounded-lg px-2 ${large ? "py-3 text-base" : "py-2 text-sm"}`
           : "flex flex-col items-center py-3 text-[11px]";
         if (!item.href) {
           return (

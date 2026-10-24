@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { LedgerMark } from "@/components/ledger-mark";
+import { MobileMenu } from "@/components/mobile-menu";
 import { Nav } from "@/components/nav";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -27,21 +28,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </form>
       </aside>
 
-      <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 md:hidden">
-        <div className="flex items-center gap-2">
-          <LedgerMark size={24} />
-          <span className="font-semibold tracking-tight">App ROI</span>
-        </div>
-        <form action={signOut}>
-          <button className="text-sm text-ink-2">Salir</button>
-        </form>
-      </header>
+      <MobileMenu email={user.email} signOut={signOut} />
 
-      <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 md:px-10 md:pb-12 md:pt-10">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-6 md:px-10 md:pb-12 md:pt-10">{children}</main>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
-        <Nav orientation="horizontal" />
-      </div>
     </div>
   );
 }
