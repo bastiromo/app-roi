@@ -7,6 +7,10 @@ insert into auth.users values
   ('11111111-1111-1111-1111-111111111111', 'basti@example.com'),
   ('22222222-2222-2222-2222-222222222222', 'otro@example.com');
 
+-- Siembra de empresas (dos veces: debe ser idempotente)
+select app.seed_default_firms('11111111-1111-1111-1111-111111111111');
+select app.seed_default_firms('11111111-1111-1111-1111-111111111111');
+
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 
@@ -130,6 +134,19 @@ select pg_temp.must_fail($q$insert into payment_methods (label) values ('Visa 41
 select pg_temp.must_fail(format(
   $q$insert into expenses (occurred_on, firm_id, category, amount, currency, fx_usd_clp) values ('2026-09-01', %L, 'otros', -5, 'USD', 900)$q$,
   pg_temp.id('firm_A')), 'monto negativo');
+
+-- Empresas sembradas
+select pg_temp.assert((select count(*) from firms where name not in ('A','B')) = 11, 'siembra: 11 empresas, sin duplicar');
+select pg_temp.assert((select count(*) from firms where is_configured and name not in ('A','B')) = 4, 'siembra: 4 configuradas, 7 de catálogo');
+select pg_temp.assert((select split_tier_threshold = 25000 and split_tier_pct_before = 100 and default_trader_share_pct = 90
+                       from firms where name = 'Apex Trader Funding'), 'Apex: 100 % hasta 25.000, luego 90 %');
+select pg_temp.assert((select default_transfer_fee = 25 and not transfer_fee_is_estimate from firms where name = 'Lucid Trading'),
+                      'Lucid: comisión 25 confirmada');
+select pg_temp.must_fail($q$update firms set split_tier_threshold = 1000 where name = 'Topstep'$q$, 'tramo incompleto (falta %)');
+select pg_temp.must_fail($q$select app.seed_default_firms('22222222-2222-2222-2222-222222222222')$q$,
+                         'usuario no puede sembrar empresas de otro');
+update payouts set trader_share_pct = 93.333333 where id = pg_temp.id('pay_a2');
+select pg_temp.assert((select trader_share_pct = 93.333333 from payouts where id = pg_temp.id('pay_a2')), '% mezclado con 6 decimales');
 
 -- Auditoría y aislamiento
 update expenses set description = 'editado' where external_ref = 'A-1';

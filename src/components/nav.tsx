@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 // Las secciones sin href se habilitan en sus etapas de desarrollo.
 const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Resumen", href: "/" },
-  { label: "Empresas", stage: "Etapa 2" },
-  { label: "Cuentas", stage: "Etapa 2" },
+  { label: "Empresas", href: "/empresas" },
+  { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", stage: "Etapa 3" },
   { label: "Payouts", stage: "Etapa 4" },
 ];
@@ -18,7 +18,7 @@ export function Nav({ orientation }: { orientation: "vertical" | "horizontal" })
   return (
     <nav aria-label="Principal" className={vertical ? "flex flex-col gap-0.5" : "grid grid-cols-5"}>
       {ITEMS.map((item) => {
-        const active = item.href === path;
+        const active = item.href === "/" ? path === "/" : !!item.href && path.startsWith(item.href);
         const base = vertical
           ? "flex items-center justify-between rounded-lg px-2 py-2 text-sm"
           : "flex flex-col items-center py-3 text-xs";
