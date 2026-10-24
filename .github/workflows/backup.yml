@@ -1,0 +1,36 @@
+name: Respaldo nocturno
+
+# Todas las noches (~04:17 hora de Chile) exporta la base completa del esquema public,
+# la cifra con BACKUP_PASSPHRASE y la guarda como artefacto privado por 30 días.
+# Además mantiene activo el proyecto gratuito de Supabase (evita la pausa por inactividad).
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exportar base (pg_dump 17)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          stamp=$(date -u +%Y%m%d-%H%M)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          docker run --rm -e DB_URL="$SUPABASE_DB_URL" -v "$PWD:/out" postgres:17 \
+            sh -c 'pg_dump "$DB_URL" --schema=public --no-owner --no-privileges --format=custom --file=/out/app-roi.dump'
+          test -s app-roi.dump
+      - name: Cifrar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+              --symmetric --cipher-algo AES256 -o "app-roi-$STAMP.dump.gpg" app-roi.dump
+          rm app-roi.dump
+      - uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-${{ env.STAMP }}
+          path: app-roi-*.dump.gpg
+          retention-days: 30

@@ -1,0 +1,46 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+// Las secciones sin href se habilitan en sus etapas de desarrollo.
+const ITEMS: { label: string; href?: string; stage?: string }[] = [
+  { label: "Resumen", href: "/" },
+  { label: "Empresas", stage: "Etapa 2" },
+  { label: "Cuentas", stage: "Etapa 2" },
+  { label: "Gastos", stage: "Etapa 3" },
+  { label: "Payouts", stage: "Etapa 4" },
+];
+
+export function Nav({ orientation }: { orientation: "vertical" | "horizontal" }) {
+  const path = usePathname();
+  const vertical = orientation === "vertical";
+  return (
+    <nav aria-label="Principal" className={vertical ? "flex flex-col gap-0.5" : "grid grid-cols-5"}>
+      {ITEMS.map((item) => {
+        const active = item.href === path;
+        const base = vertical
+          ? "flex items-center justify-between rounded-lg px-2 py-2 text-sm"
+          : "flex flex-col items-center py-3 text-xs";
+        if (!item.href) {
+          return (
+            <span key={item.label} aria-disabled="true" title={`Disponible en ${item.stage}`} className={`${base} text-ink-3`}>
+              {item.label}
+              {vertical && <span className="text-[11px] text-ink-3">{item.stage}</span>}
+            </span>
+          );
+        }
+        return (
+          <Link
+            key={item.label}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className={`${base} ${active ? "font-semibold text-ink" : "text-ink-2 hover:text-ink"} ${active && vertical ? "bg-surface-2" : ""}`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

@@ -1,0 +1,23 @@
+name: Aplicar migraciones a Supabase
+
+# Se ejecuta a mano (Actions → "Aplicar migraciones a Supabase" → Run workflow).
+# Requiere el secreto SUPABASE_DB_URL (cadena "Session pooler" de Supabase, con la contraseña).
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Ver migraciones pendientes
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - name: Aplicar
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
