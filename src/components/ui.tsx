@@ -61,7 +61,7 @@ export function Check({ label, hint, ...props }: InputHTMLAttributes<HTMLInputEl
 export function Button({ children, variant = "primary", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "quiet" }) {
   const styles =
     variant === "primary"
-      ? "bg-ink text-bg hover:opacity-90 disabled:opacity-50"
+      ? "bg-accent text-accent-ink hover:opacity-90 disabled:opacity-50"
       : "text-ink-2 hover:text-ink hover:bg-surface-2";
   return (
     <button {...props} className={`h-11 rounded-full px-5 text-sm font-semibold transition-opacity ${styles} ${props.className ?? ""}`}>
@@ -72,7 +72,7 @@ export function Button({ children, variant = "primary", ...props }: ButtonHTMLAt
 
 export function LinkButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-bg transition-opacity hover:opacity-90">
+    <Link href={href} className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90">
       {children}
     </Link>
   );

@@ -14,7 +14,7 @@ function Option({ href, title, children, primary = false }: { href: string; titl
       <a
         href={href}
         download
-        className={`inline-flex h-10 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold ${primary ? "bg-ink text-bg hover:opacity-90" : "border border-line hover:border-ink-3"}`}
+        className={`inline-flex h-10 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold ${primary ? "bg-accent text-accent-ink hover:opacity-90" : "border border-line hover:border-ink-3"}`}
       >
         Descargar
       </a>

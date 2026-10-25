@@ -232,7 +232,7 @@ export function AccountsList(props: {
           <button
             onClick={changeStatus}
             disabled={selected.size === 0 || pending || (closes && !closeDate)}
-            className="col-span-2 h-11 rounded-full bg-ink px-4 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-40 md:h-10"
+            className="col-span-2 h-11 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-40 md:h-10"
           >
             Aplicar{selected.size > 0 ? ` (${selected.size})` : ""}
           </button>
@@ -501,9 +501,9 @@ function WithdrawalCell({ a, selecting }: { a: AccountListRow; selecting: boolea
                 i < w.paid
                   ? stage === "done"
                     ? "bg-debit"
-                    : "bg-ink"
+                    : "bg-accent"
                   : i < used
-                    ? "border border-ink bg-[linear-gradient(90deg,var(--ink)_50%,transparent_50%)]"
+                    ? "border border-accent bg-[linear-gradient(90deg,var(--accent)_50%,transparent_50%)]"
                     : "border border-ink-3/60"
               }`}
             />
@@ -520,7 +520,7 @@ function WithdrawalCell({ a, selecting }: { a: AccountListRow; selecting: boolea
           href={`/payouts/nuevo?cuenta=${a.id}`}
           aria-label={`Registrar un retiro de ${a.label}`}
           title="Registrar retiro"
-          className="inline-grid size-7 place-items-center rounded-full border border-line text-ink-2 transition-colors hover:border-ink hover:bg-ink hover:text-bg"
+          className="inline-grid size-7 place-items-center rounded-full border border-line text-ink-2 transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
         >
           <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

@@ -101,7 +101,7 @@ export function DashboardView(props: {
           </Link>
           <Link
             href="/exportar"
-            className="hidden h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-bg transition-opacity hover:opacity-90 sm:inline-flex"
+            className="hidden h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 sm:inline-flex"
           >
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" />

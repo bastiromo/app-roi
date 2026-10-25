@@ -134,7 +134,7 @@ export function ThemeIconButton({ className = "" }: { className?: string }) {
                 setOpen(false);
               }}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                theme === t ? "bg-ink text-bg" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                theme === t ? "bg-accent text-accent-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
               }`}
             >
               <Swatch t={t} />

@@ -17,6 +17,9 @@
   --ink-3: #85827b;
   /* Tarjeta destacada (invertida) */
   --hero: #161616;
+  /* Acento: botones principales, navegación activa y logo */
+  --accent: #161616;
+  --accent-ink: #ebeae6;
   --hero-ink: #f6f6f4;
   --hero-ink-2: #a8a6a0;
   --hero-credit: #7fdca5;
@@ -44,6 +47,8 @@
     --ink-2: #b6b4ae;
     --ink-3: #87857f;
     --hero: #f2f2f0;
+    --accent: #f2f2f0;
+    --accent-ink: #0c0c0c;
     --hero-ink: #141414;
     --hero-ink-2: #5d5b56;
     --hero-credit: #1b7a45;
@@ -69,6 +74,8 @@
   --ink-2: #b6b4ae;
   --ink-3: #87857f;
   --hero: #f2f2f0;
+  --accent: #f2f2f0;
+  --accent-ink: #0c0c0c;
   --hero-ink: #141414;
   --hero-ink-2: #5d5b56;
   --hero-credit: #1b7a45;
@@ -96,6 +103,8 @@
   --ink-2: #6e4a5a;
   --ink-3: #93707f;
   --hero: #c2185b;
+  --accent: #c2185b;
+  --accent-ink: #ffffff;
   --hero-ink: #ffffff;
   --hero-ink-2: #f9cadb;
   --hero-credit: #d5ffe6;
@@ -121,6 +130,8 @@
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-hero: var(--hero);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-hero-ink: var(--hero-ink);
   --color-hero-ink-2: var(--hero-ink-2);
   --color-hero-credit: var(--hero-credit);
