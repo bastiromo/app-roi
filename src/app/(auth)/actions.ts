@@ -25,3 +25,9 @@ export async function rememberThisDevice(): Promise<{ ok: boolean }> {
   });
   return { ok: true };
 }
+
+/** "Volver" desde las pantallas de 2FA: cierra la sesión a medio iniciar (solo contraseña). */
+export async function leaveHalfSession(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+}

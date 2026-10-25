@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BackToLogin } from "@/components/back-to-login";
 import { Button, Check, Field, Notice } from "@/components/ui";
 import { rememberThisDevice } from "../../actions";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,7 @@ export default function EnrollTwoFactorPage() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <BackToLogin />
       <h1 className="text-2xl font-semibold tracking-tight">Activa la verificación en dos pasos</h1>
       <p className="text-sm text-ink-2">
         Es obligatoria porque aquí guardas información financiera. Escanea el código con Google Authenticator, 1Password o

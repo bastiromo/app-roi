@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BackToLogin } from "@/components/back-to-login";
 import { Button, Check, Field, Notice } from "@/components/ui";
 import { rememberThisDevice } from "../../actions";
 import { createClient } from "@/lib/supabase/client";
@@ -41,6 +42,7 @@ export default function TwoFactorPage() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <BackToLogin />
       <h1 className="text-2xl font-semibold tracking-tight">Código de verificación</h1>
       <p className="text-sm text-ink-2">Escribe el código de 6 dígitos de tu app de autenticación.</p>
       <Field label="Código" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus />
