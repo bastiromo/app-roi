@@ -63,44 +63,138 @@ function barPath(x: number, w: number, yTop: number, yBase: number, roundTop: bo
 }
 
 // ---------------------------------------------------------------------------
-// Mini gráficos de las tarjetas
+// Mini gráficos de las tarjetas: con mes y valor (arriba), eje de fechas (abajo)
+// y lectura al pasar el dedo o el mouse.
 // ---------------------------------------------------------------------------
-export function Sparkline({ values, kind = "line", onHero = false, label: aria }: { values: number[]; kind?: "line" | "bars"; onHero?: boolean; label: string }) {
+const pctSpark = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
+function sparkValue(v: number, unit: "usd" | "pct") {
+  return unit === "pct" ? `${pctSpark.format(v)} %` : `${v < 0 ? "−" : ""}${usd.format(Math.abs(v))}`;
+}
+
+export function Sparkline({
+  values,
+  starts,
+  bucket,
+  unit = "usd",
+  kind = "line",
+  onHero = false,
+  what,
+  label: aria,
+}: {
+  /** Qué mide la lectura, si no es obvio (ej. "Acumulado"). */
+  what?: string;
+  values: (number | null)[];
+  starts: string[]; // inicio de cada tramo (AAAA-MM-DD), mismo largo que values
+  bucket: ChartBucket;
+  unit?: "usd" | "pct";
+  kind?: "line" | "bars";
+  onHero?: boolean;
+  label: string;
+}) {
   const [ref, W] = useWidth(160);
-  const H = 44;
+  const [active, setActive] = useState<number | null>(null);
+  const H = 48;
   const color = onHero ? "var(--hero-ink)" : "var(--series-received)";
-  if (values.length < 2 || values.every((v) => v === 0)) return <div ref={ref} className="h-11 w-full min-w-0" aria-hidden="true" />;
-  const min = Math.min(0, ...values);
-  const max = Math.max(...values, min + 1);
-  const y = (v: number) => 3 + (H - 6) * (1 - (v - min) / (max - min));
-  if (kind === "bars") {
-    const band = W / values.length;
-    const bw = Math.max(2, Math.min(10, band - 3));
+  const muted = onHero ? "text-hero-ink-2" : "text-ink-3";
+  const nums = values.filter((v): v is number => v !== null);
+  const pt = (i: number): ChartPoint => ({ start: starts[i], end: starts[i], costs: 0, received: 0, estimated: 0, net: 0, cumulative: 0 });
+  const lastIdx = values.reduce<number>((m, v, i) => (v !== null ? i : m), -1);
+
+  if (nums.length < 2 || nums.every((v) => v === 0)) {
     return (
-      <div ref={ref} className="h-11 w-full min-w-0 overflow-hidden">
-        <svg width={W} height={H} role="img" aria-label={aria} className="block overflow-visible">
-          {values.map((v, i) => (
-            <path
-              key={i}
-              className="grow"
-              style={{ animationDelay: `${i * 18}ms` }}
-              d={barPath(band * i + (band - bw) / 2, bw, Math.min(y(v), y(0) - (v > 0 ? 2 : 0)), y(0), true)}
-              fill={color}
-              opacity={v > 0 ? 0.9 : 0}
-            />
-          ))}
-        </svg>
+      <div ref={ref} className={`flex h-[5.5rem] w-full min-w-0 items-center text-xs ${muted}`}>
+        Aún no hay suficientes datos para el gráfico.
       </div>
     );
   }
-  const x = (i: number) => 2 + ((W - 4) * i) / (values.length - 1);
-  const d = values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+
+  const min = Math.min(0, ...nums);
+  const max = Math.max(...nums, min + 1);
+  const y = (v: number) => 4 + (H - 8) * (1 - (v - min) / (max - min));
+  const band = W / values.length;
+  const x = (i: number) => (kind === "bars" ? band * (i + 0.5) : 2 + ((W - 4) * i) / (values.length - 1));
+  const shown = active ?? lastIdx;
+  const pick = (clientX: number, el: SVGSVGElement) => {
+    const r = el.getBoundingClientRect();
+    const i = Math.round(((clientX - r.left) / r.width) * (values.length - (kind === "bars" ? 0 : 1)) - (kind === "bars" ? 0.5 : 0));
+    const j = Math.min(values.length - 1, Math.max(0, i));
+    setActive(values[j] === null ? null : j);
+  };
+  const peak = nums.indexOf(max) >= 0 ? max : null;
+
   return (
-    <div ref={ref} className="h-11 w-full min-w-0 overflow-hidden">
-      <svg width={W} height={H} role="img" aria-label={aria} className="block overflow-visible">
-        <path d={d} pathLength={1} className="draw" fill="none" stroke={color} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r={3} fill={color} />
+    <div ref={ref} className="w-full min-w-0">
+      {/* Lectura: mes y valor del tramo activo (por defecto, el último) */}
+      <p className={`num mb-2 flex items-baseline justify-between gap-2 text-xs ${muted}`} aria-live="polite">
+        <span>
+          {what ? `${what} · ` : ""}
+          {bucket === "week" ? `sem. ${label(pt(shown), bucket)}` : label(pt(shown), bucket, true)}
+        </span>
+        <span className={`font-semibold ${onHero ? "text-hero-ink" : "text-ink"}`}>{sparkValue(values[shown] ?? 0, unit)}</span>
+      </p>
+      <svg
+        width={W}
+        height={H}
+        role="img"
+        aria-label={`${aria}: ${label(pt(0), bucket)} a ${label(pt(lastIdx), bucket)}, último ${sparkValue(values[lastIdx] ?? 0, unit)}`}
+        className="block touch-none overflow-visible"
+        onPointerMove={(e) => pick(e.clientX, e.currentTarget)}
+        onPointerDown={(e) => pick(e.clientX, e.currentTarget)}
+        onPointerLeave={() => setActive(null)}
+      >
+        {kind === "bars" && peak !== null && (
+          <>
+            <line x1={0} x2={W} y1={y(peak)} y2={y(peak)} stroke="currentColor" strokeDasharray="2 3" className={muted} opacity={0.5} />
+            <text x={0} y={y(peak) - 3} textAnchor="start" className={`num fill-current text-[10px] ${muted}`}>
+              máx {sparkValue(peak, unit)}
+            </text>
+          </>
+        )}
+        <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke="currentColor" className={muted} opacity={0.35} />
+        {kind === "bars" ? (
+          values.map((v, i) => {
+            const bw = Math.max(2, Math.min(12, band - 3));
+            return v && v > 0 ? (
+              <path
+                key={i}
+                className="grow"
+                style={{ animationDelay: `${i * 18}ms`, transition: "opacity 120ms" }}
+                d={barPath(x(i) - bw / 2, bw, Math.min(y(v), y(0) - 2), y(0), true)}
+                fill={color}
+                opacity={i === shown ? 1 : 0.45}
+              />
+            ) : null;
+          })
+        ) : (
+          <>
+            <path
+              d={values
+                .map((v, i) => (v === null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`))
+                .filter(Boolean)
+                .map((p, i) => `${i ? "L" : "M"}${p}`)
+                .join(" ")}
+              pathLength={1}
+              className="draw"
+              fill="none"
+              stroke={color}
+              strokeWidth={1.75}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {values[shown] !== null && (
+              <>
+                {active !== null && <line x1={x(shown)} x2={x(shown)} y1={0} y2={H} stroke="currentColor" strokeDasharray="2 2" className={muted} />}
+                <circle cx={x(shown)} cy={y(values[shown]!)} r={3.5} fill={color} stroke={onHero ? "var(--hero)" : "var(--surface)"} strokeWidth={1.5} />
+              </>
+            )}
+          </>
+        )}
       </svg>
+      {/* Eje de fechas: primer y último tramo */}
+      <p className={`num mt-1 flex justify-between text-[10px] ${muted}`} aria-hidden="true">
+        <span>{label(pt(0), bucket)}</span>
+        <span>{label(pt(values.length - 1), bucket)}</span>
+      </p>
     </div>
   );
 }

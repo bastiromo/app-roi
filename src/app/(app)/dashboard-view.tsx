@@ -49,6 +49,7 @@ export function DashboardView(props: {
   const clp = summarizeFlows(cur, "clp");
   const before = prev ? summarizeFlows(prev, "usd") : null;
   const points = bucketSeries(rows, w);
+  const starts = points.map((p) => p.start);
 
   // Por cobrar: payouts solicitados/aprobados, o pagados sin monto recibido (tu parte, antes de comisiones)
   const pendingByFirm = new Map<string, Decimal>();
@@ -142,7 +143,7 @@ export function DashboardView(props: {
               value={formatMoney(usd.B, "usd")}
               delta={pctDelta(usd.B, before?.B ?? null, true, true)}
               compare={prevText}
-              spark={<Sparkline onHero values={points.map((p) => n2(p.cumulative))} label="Beneficio acumulado" />}
+              spark={<Sparkline onHero what="Acumulado" values={points.map((p) => n2(p.cumulative))} starts={starts} bucket={w.bucket} label="Beneficio acumulado" />}
               foot={
                 <span>
                   Recibido − costos{hasEstimate && <span className="text-hero-ink-2"> · incluye estimados</span>}
@@ -164,7 +165,7 @@ export function DashboardView(props: {
               }
               compare={prevText}
               spark={
-                <Sparkline values={points.filter((p) => p.cumulativeRoiPct).map((p) => n2(p.cumulativeRoiPct!))} label="ROI acumulado" />
+                <Sparkline values={points.map((p) => (p.cumulativeRoiPct ? n2(p.cumulativeRoiPct) : null))} starts={starts} bucket={w.bucket} unit="pct" what="Acumulado" label="ROI acumulado" />
               }
               foot={<Link href="/empresas" className="underline-offset-4 hover:underline">Ver empresas</Link>}
             />
@@ -175,7 +176,7 @@ export function DashboardView(props: {
               estimated={hasEstimate}
               delta={pctDelta(usd.R, before?.R ?? null)}
               compare={prevText}
-              spark={<Sparkline kind="bars" values={points.map((p) => n2(p.received))} label="Recibido por tramo" />}
+              spark={<Sparkline kind="bars" values={points.map((p) => n2(p.received))} starts={starts} bucket={w.bucket} label="Recibido por tramo" />}
               foot={<Link href="/payouts" className="underline-offset-4 hover:underline">Ver payouts</Link>}
             />
             <Kpi
@@ -184,7 +185,7 @@ export function DashboardView(props: {
               value={formatMoney(usd.C, "usd")}
               delta={pctDelta(usd.C, before?.C ?? null, false)}
               compare={prevText}
-              spark={<Sparkline kind="bars" values={points.map((p) => n2(p.costs))} label="Costos por tramo" />}
+              spark={<Sparkline kind="bars" values={points.map((p) => n2(p.costs))} starts={starts} bucket={w.bucket} label="Costos por tramo" />}
               foot={<Link href="/gastos" className="underline-offset-4 hover:underline">Ver gastos</Link>}
             />
           </div>
