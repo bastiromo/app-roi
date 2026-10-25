@@ -308,3 +308,16 @@ export function estimateReceived(requested: string, pct: string, transferFee: st
   const v = d(requested).mul(d(pct)).div(100).sub(d(transferFee ?? "0"));
   return (v.isNegative() ? d(0) : v).toDecimalPlaces(2).toFixed(2);
 }
+
+/** Venta de cripto por pesos (P2P o exchange). */
+export const conversionSchema = z.object({
+  converted_on: isoDate.refine((v) => v !== null, "La fecha es obligatoria."),
+  from_currency: z.enum(["USDT", "USDC"]),
+  from_amount: decimal("Cripto vendida", { required: true, min: 0.0001 }),
+  to_amount: decimal("Pesos recibidos", { required: true, min: 1 }),
+  fee_amount: decimal("Comisión", { min: 0 }),
+  fee_currency: z.enum(["CLP", "CRYPTO"]),
+  exchange_label: optionalText,
+  tx_ref: optionalText,
+  notes: optionalText,
+});

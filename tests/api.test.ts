@@ -144,6 +144,19 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
     expect(blocked.error?.message).toMatch(/gastos o payouts/);
   });
 
+  it("ventas de cripto: guardar, leer y n.º de orden único", async () => {
+    const row = {
+      converted_on: "2026-10-21", from_amount: "1000", from_currency: "USDT", to_amount: "955000", to_currency: "CLP",
+      fee_amount: "0", exchange_label: "Binance P2P", tx_ref: "P2P-API-1", ref_usd_clp: "950",
+    };
+    expect((await db.from("fx_conversions").insert(row)).error).toBeNull();
+    const dup = await db.from("fx_conversions").insert(row);
+    expect(dup.error?.code).toBe("23505");
+    const { data, error } = await db.from("fx_conversions").select(Q.conversions).is("deleted_at", null);
+    expect(error).toBeNull();
+    expect((data as unknown as { ref_usd_clp: string }[])[0].ref_usd_clp).toBe("950.0000");
+  });
+
   it("caché de dólar observado", async () => {
     const { error } = await db
       .from("fx_rates")
@@ -200,7 +213,7 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
       const wb = new ExcelJS.Workbook();
       const xbuf = await buildWorkbook(client, "test@example.com");
       await wb.xlsx.load(xbuf.buffer.slice(xbuf.byteOffset, xbuf.byteOffset + xbuf.byteLength) as ArrayBuffer);
-      expect(wb.worksheets.map((w) => w.name)).toEqual(["Resumen", "Gastos", "Payouts", "Cuentas", "Empresas"]);
+      expect(wb.worksheets.map((w) => w.name)).toEqual(["Resumen", "Gastos", "Payouts", "Cuentas", "Empresas", "Ventas cripto"]);
       expect(wb.getWorksheet("Payouts")!.rowCount).toBeGreaterThanOrEqual(13);
 
       await revertBatch(client, r.batch!);

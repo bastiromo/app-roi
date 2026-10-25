@@ -3,6 +3,7 @@
  * formato del importador (sirve como respaldo restaurable). Recibe el cliente de base,
  * así que se prueba contra la API real igual que el importador.
  */
+import { conversionResult, type ConversionRow } from "@/domain/conversions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import ExcelJS from "exceljs";
 import { byFirm, monthlySeries } from "@/domain/dashboard";
@@ -204,6 +205,35 @@ export async function buildWorkbook(db: Db, owner: string): Promise<Buffer> {
       name: f.name, conf: f.is_configured ? "Sí" : "No", pct: num(f.default_trader_share_pct), before: num(f.split_tier_pct_before),
       thr: num(f.split_tier_threshold), fee: num(f.default_transfer_fee), feeEst: f.transfer_fee_is_estimate ? "Estimada" : "Confirmada",
       rules: f.payout_rules_notes,
+    });
+  }
+
+  // --- Ventas de cripto por pesos (informativo)
+  const { data: conv } = await db
+    .from("fx_conversions")
+    .select(Q.conversions)
+    .is("deleted_at", null)
+    .order("converted_on")
+    .returns<(ConversionRow & { converted_on: string; from_currency: string; exchange_label: string | null; tx_ref: string | null })[]>();
+  const vc = sheet(wb, "Ventas cripto", [
+    { header: "Fecha", key: "date", width: 12 },
+    { header: "Dónde", key: "where", width: 16 },
+    { header: "N.º de orden", key: "ref", width: 20 },
+    { header: "Cripto", key: "coin", width: 8 },
+    { header: "Vendido", key: "sold", width: 12, fmt: "#,##0.00" },
+    { header: "Comisión", key: "fee", width: 10, fmt: "#,##0.00" },
+    { header: "En", key: "feeCur", width: 8 },
+    { header: "Pesos netos", key: "clp", width: 14, fmt: CLP },
+    { header: "Precio por unidad", key: "price", width: 16, fmt: '"$"#,##0.00' },
+    { header: "Dólar observado", key: "ref_fx", width: 15, fmt: '"$"#,##0.00' },
+    { header: "Diferencia vs observado", key: "diff", width: 20, fmt: CLP },
+  ]);
+  for (const c of conv ?? []) {
+    const r = conversionResult(c);
+    vc.addRow({
+      date: c.converted_on, where: c.exchange_label, ref: c.tx_ref, coin: c.from_currency, sold: num(c.from_amount),
+      fee: num(c.fee_amount), feeCur: c.fee_currency, clp: Number(r.clpNet.toFixed(0)), price: Number(r.price.toFixed(2)),
+      ref_fx: num(c.ref_usd_clp), diff: r.difference ? Number(r.difference.toFixed(0)) : null,
     });
   }
 

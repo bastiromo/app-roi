@@ -22,5 +22,7 @@ export const Q = {
     "receipts(received_on,basis,amount::text,currency,usd_rate::text,fx_usd_clp::text,fx_source,processor_fee::text,tx_hash,deleted_at)",
   flowsSummary: "flow_date,flow_type,direction,firm_id,is_estimated,amount_usd::text,amount_clp::text",
   flowsByPayout: "payout_id,amount_usd::text,amount_clp::text,is_estimated",
+  conversions:
+    "id,converted_on,from_amount::text,from_currency,to_amount::text,fee_amount::text,fee_currency,exchange_label,tx_ref,notes,ref_usd_clp::text",
   statusHistory: "phase,status,changed_at",
 } as const;

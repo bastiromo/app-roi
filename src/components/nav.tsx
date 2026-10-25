@@ -10,6 +10,7 @@ const ITEMS: { label: string; href?: string; stage?: string }[] = [
   { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", href: "/gastos" },
   { label: "Payouts", href: "/payouts" },
+  { label: "Ventas de cripto", href: "/conversiones" },
   { label: "Importar", href: "/importar" },
   { label: "Exportar", href: "/exportar" },
 ];
