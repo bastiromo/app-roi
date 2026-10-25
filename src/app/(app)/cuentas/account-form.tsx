@@ -119,7 +119,7 @@ export function AccountForm({ id, defaults, options }: { id: string | null; defa
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Guardar cuenta"}
         </Button>
-        <Link href="/cuentas" className="inline-flex h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-2 hover:text-ink">
+        <Link href="/cuentas" className="inline-flex h-11 items-center rounded-full px-4 text-sm font-semibold text-ink-2 hover:text-ink">
           Cancelar
         </Link>
       </div>

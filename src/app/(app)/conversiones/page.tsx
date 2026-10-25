@@ -42,7 +42,7 @@ export default async function ConversionsPage() {
       {error && <p role="alert" className="text-debit">No se pudieron cargar las ventas: {error.message}</p>}
 
       {rows.length > 0 && (
-        <dl className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid gap-px overflow-hidden rounded-3xl border border-line bg-line shadow-card sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Pesos recibidos" value={formatMoney(s.clpNet, "clp")} note={`${s.count} ${s.count === 1 ? "venta" : "ventas"}`} />
           <Stat label="Cripto vendida" value={`${qty.format(Number(s.cryptoOut.toFixed(2)))} USDT`} note="Incluye comisiones en cripto" />
           <Stat label="Precio promedio" value={price(s.avgPrice)} note={s.compared.avgRef ? `Dólar observado promedio ${price(s.compared.avgRef)}` : "por USDT"} />

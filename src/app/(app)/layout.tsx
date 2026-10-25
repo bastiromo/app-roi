@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LedgerMark } from "@/components/ledger-mark";
 import { MobileMenu } from "@/components/mobile-menu";
-import { Nav } from "@/components/nav";
-import { ThemeSwitch } from "@/components/theme-switch";
+import { PillNav } from "@/components/nav";
+import { SideRail } from "@/components/side-rail";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,30 +17,32 @@ async function signOut() {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, supabase } = await requireUser();
   const { data: isAdmin } = await supabase.rpc("is_admin");
+  const initials = (user.email ?? "?").slice(0, 2).toUpperCase();
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
-      <aside className="hidden border-r border-line bg-surface md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:overflow-y-auto md:px-4 md:py-6">
-        <div className="mb-8 flex items-center gap-2.5 px-2">
-          <LedgerMark size={26} />
-          <span className="font-semibold tracking-tight">App ROI</span>
-        </div>
-        <Nav orientation="vertical" admin={Boolean(isAdmin)} />
-        <div className="mt-auto border-t border-line pt-3">
-          <ThemeSwitch />
-        </div>
-        <form action={signOut} className="mt-3 px-2">
-          <p className="truncate text-xs text-ink-3" title={user.email}>{user.email}</p>
-          <Link href="/dispositivos" className="mt-1 block text-sm text-ink-2 hover:text-ink">
-            Dispositivos recordados
+    <div className="min-h-dvh">
+      {/* Computador: marca, navegación en píldora y cuenta */}
+      <header className="sticky top-0 z-30 hidden bg-bg/85 backdrop-blur-md lg:block">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 py-4 pl-28 pr-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <LedgerMark size={34} />
+            <span className="text-[15px] font-semibold tracking-tight">App ROI</span>
           </Link>
-          <button className="mt-1 text-sm text-ink-2 hover:text-ink">Cerrar sesión</button>
-        </form>
-      </aside>
+          <PillNav />
+          <Link
+            href="/dispositivos"
+            title={user.email}
+            aria-label={`Tu cuenta: ${user.email}`}
+            className="grid size-11 place-items-center rounded-full border border-line bg-surface text-xs font-semibold text-ink-2 shadow-card hover:text-ink"
+          >
+            {initials}
+          </Link>
+        </div>
+      </header>
 
+      <SideRail admin={Boolean(isAdmin)} signOut={signOut} />
       <MobileMenu email={user.email} signOut={signOut} admin={Boolean(isAdmin)} />
 
-      <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-6 md:px-10 md:pb-12 md:pt-10">{children}</main>
-
+      <main className="mx-auto w-full max-w-7xl px-4 pb-16 pt-4 md:px-8 lg:pl-28 lg:pt-6">{children}</main>
     </div>
   );
 }

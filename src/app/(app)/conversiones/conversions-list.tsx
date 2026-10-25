@@ -55,7 +55,7 @@ export function ConversionsList({ rows }: { rows: ConversionListRow[] }) {
       {rows.length === 0 ? (
         <p className="text-sm text-ink-2">Aún no registras ventas.</p>
       ) : (
-        <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+        <ul className="divide-y divide-line rounded-3xl border border-line bg-surface shadow-card">
           {rows.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">

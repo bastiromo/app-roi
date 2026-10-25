@@ -50,7 +50,7 @@ export default async function InvitationsPage() {
         {rows.length === 0 ? (
           <p className="text-sm text-ink-2">Aún no has invitado a nadie.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line rounded-3xl border border-line bg-surface shadow-card">
             {rows.map((i) => {
               const expired = !i.used_at && i.expired_flag;
               return (

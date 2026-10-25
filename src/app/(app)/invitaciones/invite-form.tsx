@@ -9,7 +9,7 @@ export function InviteForm({ registerUrl }: { registerUrl: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createInvitation, emptyForm);
   const ok = state.message && !state.errors && state.message.startsWith("Invitación creada");
   return (
-    <form action={action} className="max-w-xl space-y-4 rounded-xl border border-line bg-surface p-4 md:p-6" noValidate>
+    <form action={action} className="max-w-xl space-y-4 rounded-3xl border border-line bg-surface shadow-card p-4 md:p-6" noValidate>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
           <Field label="Correo de la persona" name="email" type="email" defaultValue={ok ? "" : state.values?.email} error={state.errors?.email} key={ok ? state.message : "f"} />

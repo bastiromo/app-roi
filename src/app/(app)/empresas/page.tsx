@@ -36,7 +36,7 @@ export default async function FirmsPage({ searchParams }: { searchParams: Promis
         <h2 id="mis-empresas" className="mb-3 font-semibold">
           Configuradas
         </h2>
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
           <table className="w-full min-w-[40rem] text-sm">
             <thead className="text-left text-ink-2">
               <tr className="border-b border-line">
@@ -85,7 +85,7 @@ export default async function FirmsPage({ searchParams }: { searchParams: Promis
               <li key={f.id}>
                 <Link
                   href={`/empresas/${f.id}`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:border-ink-3"
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm hover:border-ink-3"
                 >
                   {f.name} <Tag>Configurar</Tag>
                 </Link>

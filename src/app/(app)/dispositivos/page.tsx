@@ -40,7 +40,7 @@ export default async function DevicesPage() {
         </p>
       ) : (
         <>
-          <ul className="max-w-2xl divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="max-w-2xl divide-y divide-line rounded-3xl border border-line bg-surface shadow-card">
             {active.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div>

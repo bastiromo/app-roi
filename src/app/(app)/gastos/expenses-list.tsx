@@ -73,7 +73,7 @@ export function ExpensesList(props: {
   }
 
   const allSelected = rows.length > 0 && selected.size === rows.length;
-  const control = "h-10 rounded-lg border border-line bg-surface px-3";
+  const control = "h-10 rounded-full border border-line bg-surface px-3";
 
   return (
     <div className="space-y-6">
@@ -86,7 +86,7 @@ export function ExpensesList(props: {
       {result && (
         <div
           role={result.ok ? "status" : "alert"}
-          className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${result.ok ? "border-credit/40 text-credit" : "border-debit/40 text-debit"}`}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${result.ok ? "border-credit/40 text-credit" : "border-debit/40 text-debit"}`}
         >
           <span>{result.message}</span>
           {result.ok && result.ids && (
@@ -130,7 +130,7 @@ export function ExpensesList(props: {
             <span className="mb-1 block text-ink-2">Hasta</span>
             <input type="date" name="hasta" defaultValue={filter.hasta} className={control} />
           </label>
-          <button className="h-10 rounded-lg border border-line bg-surface px-4 text-sm font-medium hover:border-ink-3">Filtrar</button>
+          <button className="h-10 rounded-full border border-line bg-surface px-4 text-sm font-medium hover:border-ink-3">Filtrar</button>
           {filtered && (
             <Link href="/gastos" className="h-10 px-2 text-sm leading-10 text-ink-2 hover:text-ink">
               Quitar filtros
@@ -145,7 +145,7 @@ export function ExpensesList(props: {
                 setSelected(new Set());
               }}
               aria-pressed={selecting}
-              className="h-10 rounded-lg border border-line bg-surface px-4 text-sm font-medium hover:border-ink-3"
+              className="h-10 rounded-full border border-line bg-surface px-4 text-sm font-medium hover:border-ink-3"
             >
               {selecting ? "Cancelar selección" : "Seleccionar"}
             </button>
@@ -153,7 +153,7 @@ export function ExpensesList(props: {
               <button
                 onClick={() => remove([...selected])}
                 disabled={selected.size === 0 || pending}
-                className="h-10 rounded-lg bg-debit px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                className="h-10 rounded-full bg-debit px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
               >
                 Eliminar{selected.size > 0 ? ` (${selected.size})` : ""}
               </button>
@@ -163,14 +163,14 @@ export function ExpensesList(props: {
       </div>
 
       {rows.length === 0 ? (
-        <section className="rounded-xl border border-dashed border-line bg-surface p-6">
+        <section className="rounded-3xl border border-dashed border-line bg-surface p-6">
           <h2 className="font-semibold">{filtered ? "Ningún gasto coincide con los filtros" : "Aún no hay gastos"}</h2>
           <p className="mt-2 text-sm text-ink-2">
             {filtered ? "Prueba con otro rango o categoría." : "Registra tu primera evaluación, o espera la carga de tu historial de Lucid."}
           </p>
         </section>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
           <table className="w-full min-w-[54rem] text-sm">
             <thead className="text-left text-ink-2">
               <tr className="border-b border-line">

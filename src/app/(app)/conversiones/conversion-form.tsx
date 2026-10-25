@@ -20,7 +20,7 @@ export function ConversionForm({ today, lastLabel }: { today: string; lastLabel:
   const ok = Boolean(state.message && !state.values && !state.errors);
 
   return (
-    <section aria-labelledby="nueva-venta" className="space-y-4 rounded-xl border border-line bg-surface p-5 md:p-6">
+    <section aria-labelledby="nueva-venta" className="space-y-4 rounded-3xl border border-line bg-surface shadow-card p-5 md:p-6">
       <h2 id="nueva-venta" className="font-semibold">
         Registrar una venta
       </h2>

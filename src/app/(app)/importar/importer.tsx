@@ -52,7 +52,7 @@ export function Importer() {
       {result && (
         <div
           role={result.ok ? "status" : "alert"}
-          className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${result.ok ? "border-credit/40 text-credit" : "border-debit/40 text-debit"}`}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${result.ok ? "border-credit/40 text-credit" : "border-debit/40 text-debit"}`}
         >
           <span>{result.message}</span>
           {result.ok && result.batch && (
@@ -68,9 +68,9 @@ export function Importer() {
         </div>
       )}
 
-      <section className="space-y-4 rounded-xl border border-line bg-surface p-4 md:p-6">
+      <section className="space-y-4 rounded-3xl border border-line bg-surface shadow-card p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-line px-4 text-sm font-medium hover:border-ink-3">
+          <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-line px-4 text-sm font-medium hover:border-ink-3">
             Elegir archivo CSV
             <input type="file" accept=".csv,text/csv,text/plain" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
           </label>
@@ -143,7 +143,7 @@ export function Importer() {
                 </ul>
               )}
 
-              <div className="max-h-[28rem] overflow-auto rounded-xl border border-line bg-surface">
+              <div className="max-h-[28rem] overflow-auto rounded-3xl border border-line bg-surface shadow-card">
                 <table className="w-full min-w-[48rem] text-sm">
                   <thead className="sticky top-0 bg-surface text-left text-ink-2">
                     <tr className="border-b border-line">

@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Exportar" };
 
 function Option({ href, title, children, primary = false }: { href: string; title: string; children: React.ReactNode; primary?: boolean }) {
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
+    <li className="flex flex-col gap-3 rounded-3xl border border-line bg-surface shadow-card p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
       <div className="max-w-prose">
         <h2 className="font-semibold">{title}</h2>
         <p className="mt-1 text-sm text-ink-2">{children}</p>
@@ -14,7 +14,7 @@ function Option({ href, title, children, primary = false }: { href: string; titl
       <a
         href={href}
         download
-        className={`inline-flex h-10 shrink-0 items-center justify-center rounded-lg px-4 text-sm font-semibold ${primary ? "bg-ink text-bg hover:opacity-90" : "border border-line hover:border-ink-3"}`}
+        className={`inline-flex h-10 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold ${primary ? "bg-ink text-bg hover:opacity-90" : "border border-line hover:border-ink-3"}`}
       >
         Descargar
       </a>

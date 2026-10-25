@@ -31,7 +31,7 @@ export default async function EditAccountPage({
           <Notice tone="success">Cuenta financiada creada. {fundedFrom.label} quedó como aprobada y vinculada a esta cuenta.</Notice>
         )}
         {a.phase === "evaluacion" && a.status === "activa" && (
-          <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-4">
+          <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-line bg-surface shadow-card p-4">
             <p className="text-sm text-ink-2">¿Pasaste esta evaluación? Crea la cuenta financiada y quedará vinculada.</p>
             <LinkButton href={`/cuentas/${a.id}/aprobar`}>Aprobé esta evaluación</LinkButton>
           </section>

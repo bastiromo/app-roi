@@ -122,7 +122,7 @@ export function FirmForm({ id, defaults }: { id: string | null; defaults: FirmFo
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Guardar empresa"}
         </Button>
-        <Link href="/empresas" className="inline-flex h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-2 hover:text-ink">
+        <Link href="/empresas" className="inline-flex h-11 items-center rounded-full px-4 text-sm font-semibold text-ink-2 hover:text-ink">
           Cancelar
         </Link>
       </div>

@@ -189,14 +189,14 @@ export function PayoutForm({ id, defaults, options }: { id: string | null; defau
       {paid && (
         <fieldset className="space-y-4">
           <legend className="mb-2 font-semibold">Lo que llegó</legend>
-          <div className="inline-flex rounded-lg border border-line bg-surface p-1" role="radiogroup" aria-label="Monto recibido">
+          <div className="inline-flex rounded-full bg-surface-2 p-1" role="radiogroup" aria-label="Monto recibido">
             {(
               [
                 ["estimated", "Usar estimado"],
                 ["actual", "Sé el monto exacto"],
               ] as const
             ).map(([k, label]) => (
-              <label key={k} className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium ${mode === k ? "bg-ink text-bg" : "text-ink-2"}`}>
+              <label key={k} className={`cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors ${mode === k ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:text-ink"}`}>
                 <input type="radio" name="receipt_mode" value={k} checked={mode === k} onChange={() => setMode(k)} className="sr-only" />
                 {label}
               </label>
@@ -267,7 +267,7 @@ export function PayoutForm({ id, defaults, options }: { id: string | null; defau
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Guardar payout"}
         </Button>
-        <Link href="/payouts" className="inline-flex h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-2 hover:text-ink">
+        <Link href="/payouts" className="inline-flex h-11 items-center rounded-full px-4 text-sm font-semibold text-ink-2 hover:text-ink">
           Cancelar
         </Link>
       </div>

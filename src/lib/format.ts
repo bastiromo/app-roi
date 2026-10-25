@@ -9,7 +9,10 @@ const dateFmt = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short
 
 // Intl recibe number solo al final, ya redondeado con Decimal (sin errores de coma flotante).
 export function formatMoney(value: Decimal, currency: "usd" | "clp"): string {
-  return currency === "usd" ? usd.format(Number(value.toFixed(2))) : clp.format(Number(value.toFixed(0)));
+  // El signo va adelante ("−US$144,00"), no entre el símbolo y la cifra ("US$-144,00")
+  const v = currency === "usd" ? Number(value.toFixed(2)) : Number(value.toFixed(0));
+  const text = currency === "usd" ? usd.format(Math.abs(v)) : clp.format(Math.abs(v));
+  return v < 0 ? `−${text}` : text;
 }
 
 export function formatPct(value: Decimal | null): string {

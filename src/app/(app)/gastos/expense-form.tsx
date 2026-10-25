@@ -80,9 +80,9 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
     <form action={action} className="max-w-2xl space-y-8" noValidate>
       <fieldset className="space-y-4">
         <legend className="sr-only">Tipo</legend>
-        <div className="inline-flex rounded-lg border border-line bg-surface p-1" role="radiogroup" aria-label="Tipo de movimiento">
+        <div className="inline-flex rounded-full bg-surface-2 p-1" role="radiogroup" aria-label="Tipo de movimiento">
           {(["cost", "refund"] as const).map((k) => (
-            <label key={k} className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium ${kind === k ? "bg-ink text-bg" : "text-ink-2"}`}>
+            <label key={k} className={`cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors ${kind === k ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:text-ink"}`}>
               <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => setKind(k)} className="sr-only" />
               {k === "cost" ? "Gasto" : "Reembolso recibido"}
             </label>
@@ -182,7 +182,7 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
       </fieldset>
 
       {!id && kind === "cost" && (
-        <fieldset className="space-y-4 rounded-xl border border-line bg-surface p-4">
+        <fieldset className="space-y-4 rounded-3xl border border-line bg-surface shadow-card p-4">
           <legend className="px-1 font-semibold">Varias compras iguales</legend>
           <p className="text-sm text-ink-2">Si compraste varias cuentas iguales, indica cuántas y se registra un gasto por cada una.</p>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -259,7 +259,7 @@ export function ExpenseForm({ id, defaults, options }: { id: string | null; defa
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : kind === "refund" ? "Guardar reembolso" : many ? `Registrar ${qty} gastos` : "Guardar gasto"}
         </Button>
-        <Link href="/gastos" className="inline-flex h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-2 hover:text-ink">
+        <Link href="/gastos" className="inline-flex h-11 items-center rounded-full px-4 text-sm font-semibold text-ink-2 hover:text-ink">
           Cancelar
         </Link>
       </div>
