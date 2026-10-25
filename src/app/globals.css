@@ -35,7 +35,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]):not([data-theme="pink"]) {
     --bg: #0c0c0c;
     --surface: #171717;
     --surface-2: #202020;
@@ -83,6 +83,33 @@
   --series-cost: #7c7972;
   --grid: #242424;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+/* Tema Rosa: fondo rosa empolvado, tinta ciruela y tarjeta destacada frambuesa.
+   Series validadas: separación para daltonismo y contraste ≥ 3:1 sobre la superficie. */
+:root[data-theme="pink"] {
+  --bg: #f6e8ec;
+  --surface: #fffafb;
+  --surface-2: #f9edf1;
+  --line: #efd6de;
+  --ink: #2b1621;
+  --ink-2: #6e4a5a;
+  --ink-3: #93707f;
+  --hero: #c2185b;
+  --hero-ink: #ffffff;
+  --hero-ink-2: #f9cadb;
+  --hero-credit: #d5ffe6;
+  --hero-debit: #ffe1dc;
+  --credit: #1b7a45;
+  --credit-bg: #dcf1e2;
+  --debit: #b3261e;
+  --debit-bg: #fbe0dd;
+  --estimate: #a16207;
+  --focus: #c2185b;
+  --series-received: #8a1648;
+  --series-cost: #b08797;
+  --grid: #f1e1e6;
+  --shadow: 0 1px 2px rgb(120 20 60 / 0.05), 0 8px 24px -12px rgb(120 20 60 / 0.12);
 }
 
 @theme inline {
