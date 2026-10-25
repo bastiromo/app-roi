@@ -13,6 +13,12 @@ export async function savePayout(id: string | null, _prev: FormState, form: Form
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
   const p = parsed.data;
 
+  // Una evaluación no tiene payouts: solo cuentas financiadas o live
+  const { data: acc } = await supabase.from("accounts").select("phase").eq("id", p.account_id).maybeSingle<{ phase: string }>();
+  if (acc?.phase === "evaluacion") {
+    return { errors: { account_id: "Es una cuenta de evaluación: los payouts se registran en cuentas financiadas." }, values };
+  }
+
   const paid = p.status === "paid";
   const receivedOn = p.received_on ?? p.paid_on ?? p.requested_on;
   const estimated = paid && p.receipt_mode === "estimated";

@@ -71,7 +71,11 @@ export function PayoutForm({ id, defaults, options }: { id: string | null; defau
   const fxTouched = useRef(Boolean(id) && defaults.fx_source === "manual");
 
   const firm = options.firms.find((f) => f.id === firmId);
-  const accounts = options.accounts.filter((a) => a.firm_id === firmId);
+  // Solo financiadas/live (una evaluación no tiene payouts). Al editar, se mantiene la cuenta ya guardada.
+  // Activas primero; las demás muestran su estado.
+  const accounts = options.accounts
+    .filter((a) => a.firm_id === firmId && (a.phase !== "evaluacion" || a.id === defaults.account_id))
+    .sort((a, b) => Number(b.status === "activa") - Number(a.status === "activa"));
   const paid = status === "paid";
 
   // Retirado antes de esta fecha en la empresa (para reglas por tramos como Apex)
@@ -143,11 +147,13 @@ export function PayoutForm({ id, defaults, options }: { id: string | null; defau
             ))}
           </Select>
           <Select label="Cuenta" name="account_id" defaultValue={v("account_id")} error={e.account_id} disabled={!firmId}>
-            <option value="">{firmId ? "Elige la cuenta" : "Elige primero la empresa"}</option>
+            <option value="">
+              {!firmId ? "Elige primero la empresa" : accounts.length ? "Elige la cuenta financiada" : "Esta empresa no tiene cuentas financiadas"}
+            </option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
-                {a.phase === "evaluacion" ? " (evaluación)" : ""}
+                {a.phase === "evaluacion" ? " (evaluación)" : a.status !== "activa" ? ` (${a.status})` : ""}
               </option>
             ))}
           </Select>
