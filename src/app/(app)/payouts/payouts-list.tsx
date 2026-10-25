@@ -156,7 +156,7 @@ export function PayoutsList(props: {
           </p>
         </section>
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
+        <div className="relative overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
           <table className="w-full min-w-[54rem] text-sm">
             <thead className="text-left text-ink-2">
               <tr className="border-b border-line">

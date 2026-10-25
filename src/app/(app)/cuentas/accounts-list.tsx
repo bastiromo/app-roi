@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Notice, Tag } from "@/components/ui";
-import { PHASE_LABEL, STATUS_LABEL, STATUSES } from "@/domain/schemas";
-import { deleteAccounts, type DeleteResult, restoreAccounts } from "./actions";
+import { BULK_STATUSES, PHASE_LABEL, PHASES, STATUS_LABEL, STATUSES } from "@/domain/schemas";
+import { deleteAccounts, type DeleteResult, restoreAccounts, restoreAccountsStatus, setAccountsStatus, type StatusResult } from "./actions";
 
 export interface AccountListRow {
   id: string;
@@ -19,6 +19,7 @@ export interface AccountListRow {
   status: keyof typeof STATUS_LABEL;
   opened: string; // ya formateado
   closed: string | null; // ya formateado
+  closedOn: string | null; // AAAA-MM-DD
 }
 
 const STATUS_TONE: Record<AccountListRow["status"], "neutral" | "credit" | "debit"> = {
@@ -32,16 +33,20 @@ const STATUS_TONE: Record<AccountListRow["status"], "neutral" | "credit" | "debi
 export function AccountsList(props: {
   rows: AccountListRow[];
   firms: { id: string; name: string }[];
-  filter: { empresa?: string; estado?: string };
+  filter: { empresa?: string; estado?: string; fase?: string };
   saved: boolean;
 }) {
   const { rows, firms, filter } = props;
   const router = useRouter();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [result, setResult] = useState<DeleteResult | null>(null);
+  const [result, setResult] = useState<(DeleteResult & StatusResult) | null>(null);
   const [pending, startTransition] = useTransition();
-  const filtered = Boolean(filter.empresa || filter.estado);
+  const [newStatus, setNewStatus] = useState<string>("perdida");
+  // Hoy en Chile (solo para proponer la fecha de cierre)
+  const [closeDate, setCloseDate] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date()));
+  const filtered = Boolean(filter.empresa || filter.estado || filter.fase);
+  const closes = newStatus === "perdida" || newStatus === "cerrada";
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -76,6 +81,28 @@ export function AccountsList(props: {
     });
   }
 
+  function changeStatus() {
+    const ids = [...selected];
+    const label = STATUS_LABEL[newStatus as keyof typeof STATUS_LABEL];
+    if (!window.confirm(ids.length === 1 ? `¿Marcar la cuenta como ${label}?` : `¿Marcar ${ids.length} cuentas como ${label}?`)) return;
+    startTransition(async () => {
+      const r = await setAccountsStatus(ids, newStatus, closeDate);
+      setResult(r);
+      if (r.ok) {
+        setSelected(new Set());
+        setSelecting(false);
+        router.refresh();
+      }
+    });
+  }
+
+  function undoStatus(previous: NonNullable<StatusResult["previous"]>) {
+    startTransition(async () => {
+      setResult(await restoreAccountsStatus(previous));
+      router.refresh();
+    });
+  }
+
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
   return (
@@ -87,8 +114,12 @@ export function AccountsList(props: {
           className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${result.ok ? "border-credit/40 text-credit" : "border-debit/40 text-debit"}`}
         >
           <span>{result.message}</span>
-          {result.ok && result.ids && (
-            <button onClick={() => undo(result.ids!)} disabled={pending} className="font-semibold text-ink underline">
+          {result.ok && (result.ids || result.previous) && (
+            <button
+              onClick={() => (result.previous ? undoStatus(result.previous) : undo(result.ids!))}
+              disabled={pending}
+              className="font-semibold text-ink underline"
+            >
               Deshacer
             </button>
           )}
@@ -115,6 +146,17 @@ export function AccountsList(props: {
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {STATUS_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-ink-2">Fase</span>
+            <select name="fase" defaultValue={filter.fase ?? ""} className="h-10 rounded-full border border-line bg-surface px-3">
+              <option value="">Todas</option>
+              {PHASES.map((p) => (
+                <option key={p} value={p}>
+                  {PHASE_LABEL[p]}
                 </option>
               ))}
             </select>
@@ -152,15 +194,53 @@ export function AccountsList(props: {
         )}
       </div>
 
+      {selecting && (
+        <div className="flex flex-wrap items-end gap-3 rounded-3xl border border-line bg-surface p-4 shadow-card" role="group" aria-label="Cambiar estado de las seleccionadas">
+          <p className="w-full text-sm text-ink-2">
+            {selected.size === 0
+              ? "Toca las cuentas que quieras cambiar (o marca todas con la casilla de arriba)."
+              : `${selected.size} ${selected.size === 1 ? "cuenta seleccionada" : "cuentas seleccionadas"}`}
+          </p>
+          <label className="text-sm">
+            <span className="mb-1 block text-ink-2">Cambiar estado a</span>
+            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="h-10 rounded-full border border-line bg-surface px-3">
+              {BULK_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {closes && (
+            <label className="text-sm">
+              <span className="mb-1 block text-ink-2">{newStatus === "perdida" ? "Fecha de pérdida" : "Fecha de cierre"}</span>
+              <input
+                type="date"
+                value={closeDate}
+                onChange={(e) => setCloseDate(e.target.value)}
+                className="h-10 rounded-full border border-line bg-surface px-3"
+              />
+            </label>
+          )}
+          <button
+            onClick={changeStatus}
+            disabled={selected.size === 0 || pending || (closes && !closeDate)}
+            className="h-10 rounded-full bg-ink px-4 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-40"
+          >
+            Aplicar{selected.size > 0 ? ` (${selected.size})` : ""}
+          </button>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <section className="rounded-3xl border border-dashed border-line bg-surface p-6">
           <h2 className="font-semibold">{filtered ? "Ninguna cuenta coincide con los filtros" : "Aún no hay cuentas"}</h2>
           <p className="mt-2 text-sm text-ink-2">
-            {filtered ? "Prueba con otra empresa o estado." : "Agrega tu primera cuenta, o espera la carga de tu historial de Lucid."}
+            {filtered ? "Prueba con otra empresa, estado o fase." : "Agrega tu primera cuenta, o espera la carga de tu historial de Lucid."}
           </p>
         </section>
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
+        <div className="relative overflow-x-auto rounded-3xl border border-line bg-surface shadow-card">
           <table className="w-full min-w-[54rem] text-sm">
             <thead className="text-left text-ink-2">
               <tr className="border-b border-line">
@@ -191,7 +271,7 @@ export function AccountsList(props: {
               {rows.map((a) => (
                 <tr
                   key={a.id}
-                  className={`border-b border-line last:border-0 ${selected.has(a.id) ? "bg-debit/5" : "hover:bg-surface-2"}`}
+                  className={`border-b border-line last:border-0 ${selected.has(a.id) ? "bg-ink/[0.06]" : "hover:bg-surface-2"}`}
                   onClick={selecting ? () => toggle(a.id) : undefined}
                 >
                   {selecting && (

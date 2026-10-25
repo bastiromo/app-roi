@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { accountSchema, approvalSchema } from "@/domain/schemas";
+import { accountSchema, approvalSchema, BULK_STATUSES, type BulkStatus } from "@/domain/schemas";
 import { requireUser } from "@/lib/auth";
 import { dbMessage, fieldErrors, type FormState, formValues } from "@/lib/form";
 
@@ -80,4 +80,76 @@ export async function restoreAccounts(ids: string[]): Promise<DeleteResult> {
   revalidatePath("/cuentas");
   revalidatePath("/empresas");
   return { ok: true, message: "Eliminación deshecha." };
+}
+
+
+export interface StatusResult {
+  ok: boolean;
+  message: string;
+  /** Estado anterior de cada cuenta, para deshacer. */
+  previous?: { id: string; status: string; closed_on: string | null }[];
+}
+
+/**
+ * Cambia el estado de varias cuentas a la vez. Perdida/Cerrada guardan la fecha de cierre
+ * (nunca antes de la apertura de cada cuenta); Activa/Suspendida la borran.
+ * El historial de estados se registra solo (trigger en la base).
+ */
+export async function setAccountsStatus(ids: string[], status: string, date: string): Promise<StatusResult> {
+  const { supabase } = await requireUser();
+  const clean = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (clean.length === 0) return { ok: false, message: "No seleccionaste ninguna cuenta." };
+  if (!(BULK_STATUSES as readonly string[]).includes(status)) return { ok: false, message: "Estado no válido." };
+  const closes = status === "perdida" || status === "cerrada";
+  if (closes && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, message: "Elige la fecha de cierre o pérdida." };
+
+  const { data: rows, error: readError } = await supabase
+    .from("accounts")
+    .select("id,status,opened_on,closed_on")
+    .in("id", clean)
+    .is("deleted_at", null)
+    .returns<{ id: string; status: string; opened_on: string | null; closed_on: string | null }[]>();
+  if (readError) return { ok: false, message: dbMessage(readError) };
+  if (!rows?.length) return { ok: false, message: "No encontré esas cuentas." };
+
+  // Agrupa por fecha de cierre resultante: una actualización por grupo
+  const groups = new Map<string, string[]>();
+  for (const r of rows) {
+    const closedOn = closes ? (r.opened_on && r.opened_on > date ? r.opened_on : date) : "";
+    groups.set(closedOn, [...(groups.get(closedOn) ?? []), r.id]);
+  }
+  for (const [closedOn, groupIds] of groups) {
+    const { error } = await supabase
+      .from("accounts")
+      .update({ status: status as BulkStatus, closed_on: closedOn || null })
+      .in("id", groupIds);
+    if (error) return { ok: false, message: dbMessage(error) };
+  }
+
+  revalidatePath("/cuentas");
+  revalidatePath("/empresas");
+  revalidatePath("/");
+  const label = { activa: "Activa", suspendida: "Suspendida", perdida: "Perdida", cerrada: "Cerrada" }[status as BulkStatus];
+  return {
+    ok: true,
+    message: rows.length === 1 ? `Cuenta marcada como ${label}.` : `${rows.length} cuentas marcadas como ${label}.`,
+    previous: rows.map((r) => ({ id: r.id, status: r.status, closed_on: r.closed_on })),
+  };
+}
+
+/** Deshace un cambio de estado en grupo: devuelve a cada cuenta su estado y fecha anteriores. */
+export async function restoreAccountsStatus(previous: { id: string; status: string; closed_on: string | null }[]): Promise<StatusResult> {
+  const { supabase } = await requireUser();
+  for (const p of previous) {
+    if (!/^[0-9a-f-]{36}$/i.test(p.id)) continue;
+    const { error } = await supabase
+      .from("accounts")
+      .update({ status: p.status, closed_on: p.closed_on })
+      .eq("id", p.id);
+    if (error) return { ok: false, message: dbMessage(error) };
+  }
+  revalidatePath("/cuentas");
+  revalidatePath("/empresas");
+  revalidatePath("/");
+  return { ok: true, message: "Cambio de estado deshecho." };
 }

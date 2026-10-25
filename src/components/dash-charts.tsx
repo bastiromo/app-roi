@@ -325,7 +325,7 @@ function Table({ data, bucket }: { data: ChartPoint[]; bucket: ChartBucket }) {
   return (
     <details className="text-sm">
       <summary className="cursor-pointer text-ink-2 hover:text-ink">Ver como tabla</summary>
-      <div className="mt-3 overflow-x-auto">
+      <div className="relative mt-3 overflow-x-auto">
         <table className="num w-full min-w-[34rem]">
           <thead className="text-left text-ink-2">
             <tr className="border-b border-line">

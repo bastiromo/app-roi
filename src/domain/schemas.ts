@@ -79,6 +79,10 @@ export const firmSchema = z
 export const PHASES = ["evaluacion", "financiada", "live"] as const;
 export const STATUSES = ["activa", "aprobada", "suspendida", "perdida", "cerrada"] as const;
 
+/** Estados que se pueden asignar a varias cuentas a la vez ("Aprobada" se hace con Aprobar, que crea la financiada). */
+export const BULK_STATUSES = ["activa", "suspendida", "perdida", "cerrada"] as const;
+export type BulkStatus = (typeof BULK_STATUSES)[number];
+
 export const PHASE_LABEL: Record<(typeof PHASES)[number], string> = {
   evaluacion: "Evaluación",
   financiada: "Financiada",

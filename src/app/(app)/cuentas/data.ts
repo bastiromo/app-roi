@@ -31,11 +31,12 @@ async function attachOrigins(supabase: Awaited<ReturnType<typeof requireUser>>["
 
 export const ACCOUNT_COLUMNS = Q.accounts;
 
-export async function listAccounts(filter: { firm?: string; status?: string } = {}): Promise<AccountRow[]> {
+export async function listAccounts(filter: { firm?: string; status?: string; phase?: string } = {}): Promise<AccountRow[]> {
   const { supabase } = await requireUser();
   let q = supabase.from("accounts").select(ACCOUNT_COLUMNS).is("deleted_at", null);
   if (filter.firm) q = q.eq("firm_id", filter.firm);
   if (filter.status) q = q.eq("status", filter.status);
+  if (filter.phase) q = q.eq("phase", filter.phase);
   const { data, error } = await q.order("opened_on", { ascending: false, nullsFirst: false }).order("label").returns<AccountRow[]>();
   if (error) throw new Error(error.message);
   return attachOrigins(supabase, data ?? []);
