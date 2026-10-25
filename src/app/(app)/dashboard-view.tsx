@@ -83,14 +83,21 @@ export function DashboardView(props: {
       <header className="rise flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-4xl font-semibold tracking-[-0.04em] md:text-5xl">Resumen</h1>
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm shadow-card">
+          <Link
+            href="/cuentas?estado=activa"
+            aria-label={`Ver ${activeAccounts ?? 0} ${activeAccounts === 1 ? "cuenta activa" : "cuentas activas"}`}
+            className="group inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm shadow-card transition-colors hover:border-ink-3 active:scale-[0.98]"
+          >
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-credit opacity-60 motion-reduce:hidden" />
               <span className="relative inline-flex size-2 rounded-full bg-credit" />
             </span>
             <span className="num font-semibold">{activeAccounts ?? 0}</span>
             <span className="text-ink-2">{activeAccounts === 1 ? "cuenta activa" : "cuentas activas"}</span>
-          </span>
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="-mr-1 text-ink-3 transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </Link>
           <Link
             href="/exportar"
             className="hidden h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-bg transition-opacity hover:opacity-90 sm:inline-flex"
