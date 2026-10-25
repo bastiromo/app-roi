@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Costos, payouts y ROI real de tus cuentas de fondeo.",
     start_url: "/",
     display: "standalone",
-    background_color: "#edf0f3",
-    theme_color: "#14213d",
+    background_color: "#ebeae6",
+    theme_color: "#161616",
     lang: "es-CL",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
