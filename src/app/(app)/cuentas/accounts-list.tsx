@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Notice, Tag } from "@/components/ui";
 import { BULK_STATUSES, PHASE_LABEL, STATUS_LABEL, STATUSES } from "@/domain/schemas";
+import { withdrawalStage } from "@/domain/withdrawals";
 import { deleteAccounts, type DeleteResult, restoreAccounts, restoreAccountsStatus, setAccountsStatus, type StatusResult } from "./actions";
 
 export interface AccountListRow {
@@ -20,6 +21,8 @@ export interface AccountListRow {
   opened: string; // ya formateado
   closed: string | null; // ya formateado
   closedOn: string | null; // AAAA-MM-DD
+  /** Solo financiadas/live: retiros pagados, en proceso y máximo de su empresa (null = sin límite). */
+  withdrawals: { paid: number; inProcess: number; max: number | null } | null;
 }
 
 type Status = AccountListRow["status"];
@@ -387,6 +390,11 @@ function AccountTable({ rows, kind, selecting, selected, toggle, toggleMany, rem
                 {a.opened}
                 {a.closed && <span className={a.status === "perdida" ? "text-debit" : ""}> → {a.closed}</span>}
               </p>
+              {a.withdrawals && (
+                <div className="mt-1.5">
+                  <WithdrawalCell a={a} selecting={selecting} />
+                </div>
+              )}
             </div>
             {del(a)}
           </li>
@@ -394,7 +402,7 @@ function AccountTable({ rows, kind, selecting, selected, toggle, toggleMany, rem
       </ul>
     </div>
     <div className="relative hidden overflow-x-auto rounded-3xl border border-line bg-surface shadow-card md:block">
-      <table className={`w-full text-sm ${kind === "funded" ? "min-w-[44rem]" : "min-w-[46rem]"}`}>
+      <table className={`w-full text-sm ${kind === "funded" ? "min-w-[54rem]" : "min-w-[46rem]"}`}>
         <thead className="text-left text-ink-2">
           <tr className="border-b border-line">
             {selecting && (
@@ -414,6 +422,7 @@ function AccountTable({ rows, kind, selecting, selected, toggle, toggleMany, rem
             <th className="px-4 py-3 font-medium">Estado</th>
             <th className="px-4 py-3 font-medium">{kind === "funded" ? "Desde" : "Apertura"}</th>
             <th className="px-4 py-3 font-medium">Cierre o pérdida</th>
+            {kind === "funded" && <th className="px-4 py-3 font-medium">Retiros</th>}
             <th className="w-12 px-2 py-3">
               <span className="sr-only">Eliminar</span>
             </th>
@@ -459,6 +468,11 @@ function AccountTable({ rows, kind, selecting, selected, toggle, toggleMany, rem
               </td>
               <td className="num px-4 py-3">{a.opened}</td>
               <td className={`num px-4 py-3 ${a.status === "perdida" ? "text-debit" : ""}`}>{a.closed ?? "—"}</td>
+              {kind === "funded" && (
+                <td className="px-4 py-3">
+                  <WithdrawalCell a={a} selecting={selecting} />
+                </td>
+              )}
               <td className="px-2 py-3 text-right">{del(a)}</td>
             </tr>
           ))}
@@ -466,5 +480,58 @@ function AccountTable({ rows, kind, selecting, selected, toggle, toggleMany, rem
       </table>
     </div>
     </>
+  );
+}
+
+/** Retiros de una financiada: puntos (pagado ● / en proceso ◐ / disponible ○), "1 de 4" y botón para registrar el siguiente. */
+function WithdrawalCell({ a, selecting }: { a: AccountListRow; selecting: boolean }) {
+  const w = a.withdrawals;
+  if (!w) return null;
+  const { used, left, stage } = withdrawalStage(w, w.max);
+  const canAdd = a.status === "activa" && stage !== "done" && !selecting;
+  const dots = w.max !== null && w.max <= 10;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {dots && (
+        <span className="flex items-center gap-1" aria-hidden="true">
+          {Array.from({ length: w.max! }, (_, i) => (
+            <span
+              key={i}
+              className={`inline-block size-2.5 rounded-full ${
+                i < w.paid
+                  ? stage === "done"
+                    ? "bg-debit"
+                    : "bg-ink"
+                  : i < used
+                    ? "border border-ink bg-[linear-gradient(90deg,var(--ink)_50%,transparent_50%)]"
+                    : "border border-ink-3/60"
+              }`}
+            />
+          ))}
+        </span>
+      )}
+      <span className="num text-sm font-medium text-ink">
+        {w.max === null ? `${used} ${used === 1 ? "retiro" : "retiros"}` : `${used} de ${w.max}`}
+      </span>
+      {stage === "last" && a.status === "activa" && <Tag tone="estimate">Queda 1</Tag>}
+      {stage === "done" && a.status === "activa" && <Tag tone="debit">Completa: ciérrala</Tag>}
+      {canAdd && (
+        <Link
+          href={`/payouts/nuevo?cuenta=${a.id}`}
+          aria-label={`Registrar un retiro de ${a.label}`}
+          title="Registrar retiro"
+          className="inline-grid size-7 place-items-center rounded-full border border-line text-ink-2 transition-colors hover:border-ink hover:bg-ink hover:text-bg"
+        >
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </Link>
+      )}
+      {w.inProcess > 0 && <span className="w-full text-xs text-ink-3">{w.inProcess} en proceso</span>}
+      <span className="sr-only">
+        {w.paid} pagados{w.inProcess ? `, ${w.inProcess} en proceso` : ""}
+        {left !== null ? `, quedan ${left}` : ""}
+      </span>
+    </div>
   );
 }

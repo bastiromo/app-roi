@@ -15,6 +15,7 @@ export interface FirmFormDefaults {
   default_transfer_fee: string;
   transfer_fee_is_estimate: boolean;
   payout_rules_notes: string;
+  max_payouts_per_account: string;
   notes: string;
   is_active: boolean;
   is_configured: boolean;
@@ -101,6 +102,23 @@ export function FirmForm({ id, defaults }: { id: string | null; defaults: FirmFo
           name="transfer_fee_is_estimate"
           defaultChecked={state.values ? state.values.transfer_fee_is_estimate === "on" : defaults.transfer_fee_is_estimate}
         />
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="mb-1 font-semibold">Retiros por cuenta financiada</legend>
+        <p className="text-sm text-ink-2">
+          Cuántos payouts le sacas a una cuenta antes de cerrarla. En Cuentas verás &quot;1 de 4&quot; y un aviso cuando quede el último.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Retiros máximos por cuenta"
+            name="max_payouts_per_account"
+            inputMode="numeric"
+            defaultValue={v("max_payouts_per_account")}
+            error={e.max_payouts_per_account}
+            hint="Déjalo vacío si no tiene límite."
+          />
+        </div>
       </fieldset>
 
       <fieldset className="space-y-4">

@@ -63,6 +63,10 @@ export const firmSchema = z
     payout_rules_notes: optionalText,
     notes: optionalText,
     is_active: checkbox,
+    max_payouts_per_account: decimal("Retiros máximos", { min: 1, max: 50 }).refine(
+      (v) => v === null || /^\d+$/.test(v),
+      "Escribe un número entero (ej. 4).",
+    ),
   })
   .superRefine((f, ctx) => {
     if (f.has_tier && (!f.split_tier_pct_before || !f.split_tier_threshold)) {
@@ -73,6 +77,7 @@ export const firmSchema = z
     ...f,
     split_tier_pct_before: has_tier ? f.split_tier_pct_before : null,
     split_tier_threshold: has_tier ? f.split_tier_threshold : null,
+    max_payouts_per_account: f.max_payouts_per_account === null ? null : Number(f.max_payouts_per_account),
     is_configured: true,
   }));
 

@@ -39,3 +39,11 @@ export async function getFirm(id: string): Promise<FirmRow | null> {
   const { data } = await supabase.from("firms").select(FIRM_COLUMNS).eq("id", id).is("deleted_at", null).returns<FirmRow[]>().maybeSingle();
   return data;
 }
+
+/** Retiros máximos por cuenta (null = sin límite). Si la migración aún no corre, propone 4. */
+export async function getFirmMaxPayouts(id: string): Promise<number | null> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("firms").select("max_payouts_per_account").eq("id", id).maybeSingle<{ max_payouts_per_account: number | null }>();
+  if (error || !data) return 4;
+  return data.max_payouts_per_account;
+}

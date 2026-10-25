@@ -3,7 +3,7 @@ import { LinkButton, PageHeader } from "@/components/ui";
 import { STATUSES } from "@/domain/schemas";
 import { formatDate, formatUsdText } from "@/lib/format";
 import { AccountsList } from "./accounts-list";
-import { accountFormOptions, listAccounts } from "./data";
+import { accountFormOptions, accountWithdrawals, listAccounts } from "./data";
 
 export const metadata: Metadata = { title: "Cuentas" };
 
@@ -12,7 +12,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   // Todas las cuentas de la empresa: las pestañas de estado filtran en la pantalla, sin recargar.
   // ?estado= solo elige la pestaña inicial (ej. desde "cuentas activas" del Resumen).
   const estado = (STATUSES as readonly string[]).includes(sp.estado ?? "") ? sp.estado : undefined;
-  const [accounts, { firms }] = await Promise.all([listAccounts({ firm: sp.empresa }), accountFormOptions()]);
+  const [accounts, { firms }, wd] = await Promise.all([listAccounts({ firm: sp.empresa }), accountFormOptions(), accountWithdrawals()]);
 
   return (
     <div className="space-y-6">
@@ -38,6 +38,10 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
           opened: formatDate(a.opened_on),
           closed: a.closed_on ? formatDate(a.closed_on) : null,
           closedOn: a.closed_on,
+          withdrawals:
+            a.phase === "evaluacion"
+              ? null
+              : { ...(wd.counts.get(a.id) ?? { paid: 0, inProcess: 0 }), max: wd.maxFor(a.firm_id) },
         }))}
       />
     </div>

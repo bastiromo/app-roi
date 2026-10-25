@@ -53,6 +53,8 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
       ["firms", Q.firmsForPayout],
       ["accounts", Q.accounts],
       ["account_status_history", Q.statusHistory],
+      ["firms", "id,max_payouts_per_account"],
+      ["payouts", "account_id,status"],
     ] as const) {
       const { error } = await db.from(table).select(cols).limit(5);
       expect(error, `${table}: ${cols}`).toBeNull();

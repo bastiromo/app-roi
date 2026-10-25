@@ -1,5 +1,6 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
+import { countWithdrawals } from "@/domain/withdrawals";
 import { Q } from "@/lib/queries";
 
 export interface AccountRow {
@@ -74,4 +75,18 @@ export async function accountFormOptions() {
       .returns<{ id: string; firm_id: string; label: string; phase: AccountRow["phase"] }[]>(),
   ]);
   return { firms: firms ?? [], accounts: accounts ?? [] };
+}
+
+/**
+ * Retiros por cuenta (payouts pagados y en proceso) y el máximo por cuenta de cada empresa.
+ * Si la columna del máximo aún no existe en la base (migración pendiente), usa 4.
+ */
+export async function accountWithdrawals() {
+  const { supabase } = await requireUser();
+  const [{ data: payouts }, { data: firms, error: firmsError }] = await Promise.all([
+    supabase.from("payouts").select("account_id,status").is("deleted_at", null).returns<{ account_id: string; status: string }[]>(),
+    supabase.from("firms").select("id,max_payouts_per_account").returns<{ id: string; max_payouts_per_account: number | null }[]>(),
+  ]);
+  const maxByFirm = new Map<string, number | null>((firmsError ? [] : (firms ?? [])).map((f) => [f.id, f.max_payouts_per_account]));
+  return { counts: countWithdrawals(payouts ?? []), maxFor: (firmId: string) => (maxByFirm.has(firmId) ? maxByFirm.get(firmId)! : 4) };
 }

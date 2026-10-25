@@ -18,6 +18,7 @@ export default function NewFirmPage() {
           split_tier_pct_before: "",
           default_transfer_fee: "",
           transfer_fee_is_estimate: true,
+          max_payouts_per_account: "4",
           payout_rules_notes: "",
           notes: "",
           is_active: true,

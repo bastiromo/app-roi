@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { inputNumber } from "@/lib/format";
-import { getFirm } from "../data";
+import { getFirm, getFirmMaxPayouts } from "../data";
 import { FirmForm } from "../firm-form";
 
 export const metadata: Metadata = { title: "Editar empresa" };
 
 export default async function EditFirmPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const firm = await getFirm(id);
+  const [firm, maxPayouts] = await Promise.all([getFirm(id), getFirmMaxPayouts(id)]);
   if (!firm) notFound();
 
   return (
@@ -26,6 +26,7 @@ export default async function EditFirmPage({ params }: { params: Promise<{ id: s
           default_transfer_fee: firm.is_configured ? inputNumber(firm.default_transfer_fee) : "",
           transfer_fee_is_estimate: firm.transfer_fee_is_estimate,
           payout_rules_notes: firm.payout_rules_notes ?? "",
+          max_payouts_per_account: maxPayouts === null ? "" : String(maxPayouts),
           notes: firm.notes ?? "",
           is_active: firm.is_configured ? firm.is_active : true,
           is_configured: firm.is_configured,
