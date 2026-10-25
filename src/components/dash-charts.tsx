@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 
 /** Un tramo del gráfico (día, semana o mes), en USD como number ya redondeado. */
 export interface ChartPoint {
@@ -40,12 +40,13 @@ function niceTicks(min: number, max: number) {
 }
 
 /** Ancho real del contenedor: el SVG se dibuja 1:1 para que el texto no se achique en el celular. */
-function useWidth(initial = 720) {
+function useWidth(initial = 300) {
   const ref = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(initial);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    setW(Math.max(120, Math.round(el.getBoundingClientRect().width)));
     const ro = new ResizeObserver(([e]) => setW(Math.max(120, Math.round(e.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
@@ -68,7 +69,7 @@ export function Sparkline({ values, kind = "line", onHero = false, label: aria }
   const [ref, W] = useWidth(160);
   const H = 44;
   const color = onHero ? "var(--hero-ink)" : "var(--series-received)";
-  if (values.length < 2 || values.every((v) => v === 0)) return <div ref={ref} className="h-11" aria-hidden="true" />;
+  if (values.length < 2 || values.every((v) => v === 0)) return <div ref={ref} className="h-11 w-full min-w-0" aria-hidden="true" />;
   const min = Math.min(0, ...values);
   const max = Math.max(...values, min + 1);
   const y = (v: number) => 3 + (H - 6) * (1 - (v - min) / (max - min));
@@ -76,7 +77,7 @@ export function Sparkline({ values, kind = "line", onHero = false, label: aria }
     const band = W / values.length;
     const bw = Math.max(2, Math.min(10, band - 3));
     return (
-      <div ref={ref} className="h-11">
+      <div ref={ref} className="h-11 w-full min-w-0 overflow-hidden">
         <svg width={W} height={H} role="img" aria-label={aria} className="block overflow-visible">
           {values.map((v, i) => (
             <path
@@ -95,7 +96,7 @@ export function Sparkline({ values, kind = "line", onHero = false, label: aria }
   const x = (i: number) => 2 + ((W - 4) * i) / (values.length - 1);
   const d = values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   return (
-    <div ref={ref} className="h-11">
+    <div ref={ref} className="h-11 w-full min-w-0 overflow-hidden">
       <svg width={W} height={H} role="img" aria-label={aria} className="block overflow-visible">
         <path d={d} pathLength={1} className="draw" fill="none" stroke={color} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r={3} fill={color} />
@@ -146,13 +147,20 @@ function Tip({ p, bucket, x, W }: { p: ChartPoint; bucket: ChartBucket; x: numbe
 }
 
 function XLabels({ data, bucket, x, H, innerW }: { data: ChartPoint[]; bucket: ChartBucket; x: (i: number) => number; H: number; innerW: number }) {
-  const every = Math.ceil(data.length / Math.max(2, Math.floor(innerW / 56)));
+  // Pantalla angosta y meses: solo el mes ("may"), con el año en la primera etiqueta y en enero
+  const compact = bucket === "month" && innerW / data.length < 52;
+  const every = Math.ceil(data.length / Math.max(2, Math.floor(innerW / (compact ? 32 : 48))));
+  const text = (p: ChartPoint, i: number) => {
+    if (!compact) return label(p, bucket);
+    const m = MONTHS[Number(p.start.slice(5, 7)) - 1];
+    return i === 0 || p.start.slice(5, 7) === "01" ? `${m} ${p.start.slice(2, 4)}` : m;
+  };
   return (
     <>
       {data.map((p, i) =>
         (i % every === 0 && data.length - 1 - i >= every) || i === data.length - 1 ? (
           <text key={p.start} x={x(i)} y={H - 8} textAnchor="middle" className="fill-ink-3 text-[11px]">
-            {label(p, bucket)}
+            {text(p, i)}
           </text>
         ) : null,
       )}
@@ -175,7 +183,7 @@ function Bars({ data, bucket }: { data: ChartPoint[]; bucket: ChartBucket }) {
   const cx = (i: number) => PAD.l + band * (i + 0.5);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative w-full min-w-0 overflow-hidden" ref={ref}>
       {hover !== null && <Tip p={data[hover]} bucket={bucket} x={cx(hover)} W={W} />}
       <svg width={W} height={H} className="block" role="img" aria-label="Costos y recibido por tramo" onMouseLeave={() => setHover(null)}>
         <defs>
@@ -261,7 +269,7 @@ function Cumulative({ data, bucket }: { data: ChartPoint[]; bucket: ChartBucket 
   const last = data[data.length - 1];
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative w-full min-w-0 overflow-hidden" ref={ref}>
       {hover !== null && <Tip p={data[hover]} bucket={bucket} x={x(hover)} W={W} />}
       <svg width={W} height={H} className="block" role="img" aria-label="Beneficio acumulado" onMouseLeave={() => setHover(null)}>
         <defs>

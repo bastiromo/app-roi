@@ -127,7 +127,7 @@ export function DashboardView(props: {
           </div>
 
           {/* Indicadores */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Kpi
               hero
               delay={80}
@@ -200,7 +200,7 @@ export function DashboardView(props: {
           </div>
 
           {/* Secundarios */}
-          <dl className="grid gap-4 sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <MiniStat delay={290} label="ROI en pesos" value={formatPct(clp.roiPrePct)} note={`Beneficio ${formatMoney(clp.B, "clp")}`} />
             <MiniStat delay={320} label="Capital recuperado" value={formatPct(usd.recoveryPct)} note="Recibido sobre costos" />
             <MiniStat
@@ -211,8 +211,8 @@ export function DashboardView(props: {
             />
           </dl>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
-            <section className="rise rounded-3xl border border-line bg-surface p-5 shadow-card md:p-6" style={{ animationDelay: "380ms" }}>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
+            <section className="rise min-w-0 rounded-3xl border border-line bg-surface p-5 shadow-card md:p-6" style={{ animationDelay: "380ms" }}>
               <FlowChart
                 data={chart}
                 bucket={w.bucket}
