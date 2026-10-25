@@ -1,29 +1,29 @@
 import type { Metadata } from "next";
 import { LinkButton, PageHeader } from "@/components/ui";
-import { PHASES, STATUSES } from "@/domain/schemas";
+import { STATUSES } from "@/domain/schemas";
 import { formatDate, formatUsdText } from "@/lib/format";
 import { AccountsList } from "./accounts-list";
 import { accountFormOptions, listAccounts } from "./data";
 
 export const metadata: Metadata = { title: "Cuentas" };
 
-export default async function AccountsPage({ searchParams }: { searchParams: Promise<{ empresa?: string; estado?: string; fase?: string; guardado?: string }> }) {
+export default async function AccountsPage({ searchParams }: { searchParams: Promise<{ empresa?: string; estado?: string; guardado?: string }> }) {
   const sp = await searchParams;
-  // Solo valores conocidos (un valor inventado en la URL no rompe la consulta)
+  // Todas las cuentas de la empresa: las pestañas de estado filtran en la pantalla, sin recargar.
+  // ?estado= solo elige la pestaña inicial (ej. desde "cuentas activas" del Resumen).
   const estado = (STATUSES as readonly string[]).includes(sp.estado ?? "") ? sp.estado : undefined;
-  const fase = (PHASES as readonly string[]).includes(sp.fase ?? "") ? sp.fase : undefined;
-  const [accounts, { firms }] = await Promise.all([listAccounts({ firm: sp.empresa, status: estado, phase: fase }), accountFormOptions()]);
+  const [accounts, { firms }] = await Promise.all([listAccounts({ firm: sp.empresa }), accountFormOptions()]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Cuentas"
-        description="Cada cuenta de evaluación o financiada, con su estado. El tamaño nominal es solo referencia."
+        description="Tus financiadas y tus evaluaciones, por separado. El tamaño nominal es solo referencia."
         action={<LinkButton href="/cuentas/nueva">Agregar cuenta</LinkButton>}
       />
       <AccountsList
         saved={Boolean(sp.guardado)}
-        filter={{ empresa: sp.empresa, estado, fase }}
+        filter={{ empresa: sp.empresa, estado }}
         firms={firms.filter((f) => f.is_configured).map((f) => ({ id: f.id, name: f.name }))}
         rows={accounts.map((a) => ({
           id: a.id,
