@@ -204,3 +204,6 @@ body {
   transition: opacity 150ms ease, transform 150ms ease;
 }
 .rail-btn:hover .rail-tip, .rail-btn:focus-visible .rail-tip { opacity: 1; transform: translate(0, -50%); }
+
+/* App instalada (pantalla de inicio): sin rebote al arrastrar; "arrastrar para actualizar" es nuestro */
+html.standalone, html.standalone body { overscroll-behavior-y: none; }

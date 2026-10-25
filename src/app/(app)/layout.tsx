@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LedgerMark } from "@/components/ledger-mark";
 import { MobileMenu } from "@/components/mobile-menu";
 import { PillNav } from "@/components/nav";
+import { HomeLogo, PullToRefresh } from "@/components/refresh";
 import { SideRail } from "@/components/side-rail";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -23,10 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Computador: marca, navegación en píldora y cuenta */}
       <header className="sticky top-0 z-30 hidden bg-bg/85 backdrop-blur-md lg:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 py-4 pl-28 pr-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <LedgerMark size={34} />
-            <span className="text-[15px] font-semibold tracking-tight">App ROI</span>
-          </Link>
+          <HomeLogo size={34} className="gap-2.5 text-[15px]" />
           <PillNav />
           <Link
             href="/dispositivos"
@@ -39,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
+      <PullToRefresh />
       <SideRail admin={Boolean(isAdmin)} signOut={signOut} />
       <MobileMenu email={user.email} signOut={signOut} admin={Boolean(isAdmin)} />
 

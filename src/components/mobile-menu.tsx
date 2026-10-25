@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { LedgerMark } from "./ledger-mark";
 import { Nav } from "./nav";
+import { HomeLogo, reloadApp } from "./refresh";
 import { ThemeSwitch } from "./theme-switch";
 
 /** Barra superior del celular con botón de menú (hamburguesa) que abre un panel lateral. */
@@ -38,10 +38,7 @@ export function MobileMenu({ email, signOut, admin = false }: { email: string; s
   return (
     <>
       <header className="sticky top-0 z-30 flex items-center justify-between bg-bg/85 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md lg:hidden">
-        <div className="flex items-center gap-2">
-          <LedgerMark size={24} />
-          <span className="font-semibold tracking-tight">App ROI</span>
-        </div>
+        <HomeLogo size={24} />
         <button
           ref={openBtn}
           onClick={() => setOpen(true)}
@@ -75,6 +72,16 @@ export function MobileMenu({ email, signOut, admin = false }: { email: string; s
             </div>
             <Nav admin={admin} />
             <div className="mt-auto border-t border-line pt-3">
+              <button
+                type="button"
+                onClick={reloadApp}
+                className="mb-1 flex w-full items-center gap-2 rounded-full px-4 py-3 text-base text-ink-2 hover:bg-surface-2 hover:text-ink"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" />
+                </svg>
+                Actualizar
+              </button>
               <ThemeSwitch />
             </div>
             <form action={signOut} className="mt-2 border-t border-line px-2 pt-4">
