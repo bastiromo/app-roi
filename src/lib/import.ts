@@ -96,7 +96,8 @@ interface ExpensePlan {
 
 export async function planExpenses(supabase: Supa, lookup: FxLookupFn, rows: ExpenseImportRow[], errors: RowError[], fallbackFx: string | null): Promise<ExpensePlan> {
   const firms = await firmsByName(supabase);
-  const { fx, missing } = await fxForDates(lookup, rows.map((r) => r.occurredOn), fallbackFx);
+  // Solo se consulta el dólar de las filas que no lo traen en el archivo
+  const { fx, missing } = await fxForDates(lookup, rows.filter((r) => !r.fx).map((r) => r.occurredOn), fallbackFx);
 
   // Existentes: por n.º de orden y, sin orden, por (empresa, fecha, monto, moneda)
   const firmIds = [...new Set(rows.map((r) => firms.get(r.firm.toLowerCase())?.id).filter(Boolean))] as string[];
@@ -120,7 +121,7 @@ export async function planExpenses(supabase: Supa, lookup: FxLookupFn, rows: Exp
 
   for (const r of rows) {
     const firm = firms.get(r.firm.toLowerCase());
-    const rate = fx.get(r.occurredOn);
+    const rate = r.fx ?? fx.get(r.occurredOn);
     const base = {
       line: r.line, date: r.occurredOn, firm: firm?.name ?? r.firm, who: r.externalRef ? `#${r.externalRef}` : "—",
       detail: r.description, amount: `${plain.format(Number(r.amount))} ${r.currency}`, status: STATUS_LABEL[r.status], estimated: false, newAccount: false,
@@ -183,7 +184,7 @@ interface PayoutPlanItem {
 export async function planPayouts(supabase: Supa, lookup: FxLookupFn, rows: PayoutImportRow[], errors: RowError[], fallbackFx: string | null) {
   const firms = await firmsByName(supabase);
   const sorted = [...rows].sort((a, b) => a.requestedOn.localeCompare(b.requestedOn) || a.line - b.line);
-  const paidDates = sorted.filter((r) => r.status === "paid").map((r) => r.receivedOn ?? r.requestedOn);
+  const paidDates = sorted.filter((r) => r.status === "paid" && !r.fx).map((r) => r.receivedOn ?? r.requestedOn);
   const { fx, missing } = await fxForDates(lookup, paidDates, fallbackFx);
 
   const firmIds = [...new Set(sorted.map((r) => firms.get(r.firm.toLowerCase())?.id).filter(Boolean))] as string[];
@@ -251,7 +252,7 @@ export async function planPayouts(supabase: Supa, lookup: FxLookupFn, rows: Payo
     const pct = split.pct.toString();
     const paid = r.status === "paid";
     const on = r.receivedOn ?? r.requestedOn;
-    const rate = paid ? fx.get(on) ?? null : null;
+    const rate = paid ? (r.fx ?? fx.get(on) ?? null) : null;
     if (paid && !rate) {
       preview.push({ ...base, state: "error", note: "Sin dólar para la fecha de pago.", usd: null });
       continue;

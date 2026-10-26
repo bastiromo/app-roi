@@ -25,6 +25,10 @@ export default function ImportPage() {
           <strong className="text-ink">Payouts:</strong> columnas firm, account_external_id, requested_on, approved_amount, currency,
           status y, si los sabes, amount_received y received_on. Sin monto recibido, se usa el estimado de la empresa.
         </p>
+        <p>
+          <strong>Opcional en ambos:</strong> fx_usd_clp (dólar en pesos de esa fila). Si viene, no se consulta el dólar observado
+          para esa fila; útil cuando el servicio no responde.
+        </p>
       </section>
     </div>
   );

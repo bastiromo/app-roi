@@ -17,7 +17,7 @@ type Db = SupabaseClient<any, any, any>;
 
 interface Firm { id: string; name: string; default_trader_share_pct: string; split_tier_threshold: string | null; split_tier_pct_before: string | null; default_transfer_fee: string; transfer_fee_is_estimate: boolean; is_configured: boolean; is_active: boolean; payout_rules_notes: string | null; notes: string | null }
 interface Account { id: string; firm_id: string; label: string; external_id: string | null; plan_name: string | null; nominal_size: string | null; phase: keyof typeof PHASE_LABEL; status: keyof typeof STATUS_LABEL; origin_account_id: string | null; opened_on: string | null; closed_on: string | null; notes: string | null }
-interface Expense { id: string; kind: "cost" | "refund"; status: keyof typeof EXPENSE_STATUS_LABEL; occurred_on: string; firm_id: string | null; account_id: string | null; category: string; description: string | null; amount: string; currency: "USD" | "USDT" | "USDC" | "CLP"; usd_rate: string | null; fx_usd_clp: string; external_ref: string | null; tx_hash: string | null }
+interface Expense { id: string; kind: "cost" | "refund"; status: keyof typeof EXPENSE_STATUS_LABEL; occurred_on: string; firm_id: string | null; account_id: string | null; category: string; description: string | null; amount: string; currency: "USD" | "USDT" | "USDC" | "CLP"; usd_rate: string | null; fx_usd_clp: string; fx_source: string; external_ref: string | null; tx_hash: string | null }
 interface Payout { id: string; firm_id: string; account_id: string; status: keyof typeof PAYOUT_STATUS_LABEL; requested_on: string; paid_on: string | null; requested_amount: string; trader_share_pct: string; currency: string; notes: string | null }
 interface Received { payout_id: string; amount_usd: string; is_estimated: boolean }
 interface ReceiptRow { payout_id: string; receipts: { basis: string; amount: string; currency: string; received_on: string; deleted_at: string | null } | null }
@@ -262,8 +262,12 @@ export async function expensesCsv(db: Db): Promise<{ text: string; skippedRefund
   return {
     skippedRefunds: expenses.length - rows.length,
     text: csv([
-      ["firm", "external_ref", "occurred_on", "category", "description", "amount", "currency", "status"],
-      ...rows.map((e) => [name.get(e.firm_id!), e.external_ref, e.occurred_on, e.category, e.description, d(e.amount).toString(), e.currency, EXP_STATUS_CSV[e.status]]),
+      ["firm", "external_ref", "occurred_on", "category", "description", "amount", "currency", "status", "fx_usd_clp", "fx_source"],
+      ...rows.map((e) => [
+        name.get(e.firm_id!), e.external_ref, e.occurred_on, e.category, e.description, d(e.amount).toString(), e.currency, EXP_STATUS_CSV[e.status],
+        // El dólar va en el archivo: al restaurar no se depende del servicio del dólar observado
+        d(e.fx_usd_clp).toString(), e.fx_source === "dolar_observado" ? "dolar_observado" : "manual",
+      ]),
     ]),
   };
 }

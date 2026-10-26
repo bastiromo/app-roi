@@ -54,3 +54,18 @@ describe("errores por fila", () => {
   });
   it("formato desconocido", () => expect(parseImport("a,b\n1,2").kind).toBeNull());
 });
+
+describe("dólar por fila (fx_usd_clp)", () => {
+  const head = "firm,external_ref,occurred_on,amount,currency,fx_usd_clp,fx_source\n";
+  it("se lee con su fuente", () => {
+    const r = parseImport(head + "Topstep,1,2026-08-13,95,USD,912,dolar_observado\nTopstep,2,2026-08-12,95,USD,914.41,\n");
+    expect(r.errors).toEqual([]);
+    expect(r.rows.map((x) => x.fx)).toEqual([{ rate: "912", source: "dolar_observado" }, { rate: "914.41", source: "manual" }]);
+  });
+  it("vacío = se consulta el dólar como siempre", () => {
+    expect(parseImport(head + "Topstep,1,2026-08-13,95,USD,,\n").rows[0].fx).toBeNull();
+  });
+  it("valor absurdo → error de la fila", () => {
+    expect(parseImport(head + "Topstep,1,2026-08-13,95,USD,9.12,\n").errors[0].message).toMatch(/fx_usd_clp/);
+  });
+});

@@ -7,6 +7,8 @@
  *  Gastos:  firm, external_ref, occurred_on, category, description, amount, currency, status
  *  Payouts: firm, account_external_id, requested_on, approved_amount, currency, status,
  *           [amount_received], [received_on]
+ *  Opcional en ambos: fx_usd_clp (dólar en pesos de esa fila) y fx_source (dolar_observado | manual).
+ *  Sirve cuando el servicio del dólar observado no responde: la fila trae su propio valor.
  */
 import { CATEGORIES, parseDecimalInput } from "./schemas";
 
@@ -69,6 +71,13 @@ export interface ExpenseImportRow {
   amount: string;
   currency: Cur;
   status: "paid" | "failed" | "pending" | "void";
+  fx: RowFx | null;
+}
+
+/** Dólar indicado en la misma fila del archivo (opcional). */
+export interface RowFx {
+  rate: string;
+  source: "dolar_observado" | "manual";
 }
 
 export interface PayoutImportRow {
@@ -82,6 +91,7 @@ export interface PayoutImportRow {
   status: "paid" | "requested" | "approved" | "rejected" | "cancelled";
   receivedAmount: string | null;
   receivedOn: string | null;
+  fx: RowFx | null;
 }
 
 export interface RowError {
@@ -129,6 +139,14 @@ export function parseImport(text: string): Parsed {
   const head = table[0].map((h) => h.toLowerCase());
   const col = (name: string) => head.indexOf(name);
   const get = (r: string[], name: string) => (col(name) >= 0 ? (r[col(name)] ?? "") : "");
+  // Dólar opcional por fila: null si no viene; "NaN" si viene mal escrito
+  const rowFx = (r: string[]): RowFx | null | "NaN" => {
+    const raw = get(r, "fx_usd_clp");
+    if (!raw) return null;
+    const v = money(raw);
+    if (!v || v === "NaN" || Number(v) < 100 || Number(v) > 5000) return "NaN";
+    return { rate: v, source: get(r, "fx_source").toLowerCase() === "dolar_observado" ? "dolar_observado" : "manual" };
+  };
 
   const isExpenses = EXPENSE_HEADERS.every((h) => head.includes(h));
   const isPayouts = PAYOUT_HEADERS.every((h) => head.includes(h));
@@ -154,7 +172,9 @@ export function parseImport(text: string): Parsed {
       const recRaw = get(r, "amount_received");
       const received = recRaw ? money(recRaw) : null;
       const recOn = get(r, "received_on") ? normalizeDate(get(r, "received_on")) : null;
+      const fx = rowFx(r);
       const problems = [
+        fx === "NaN" && "dólar en pesos (fx_usd_clp) inválido",
         !firm && "falta la empresa",
         !ext && "falta el ID de la cuenta",
         !date && "fecha inválida",
@@ -167,7 +187,7 @@ export function parseImport(text: string): Parsed {
       if (problems.length) return errors.push({ line, message: problems.join("; ") });
       rows.push({
         line, firm, accountExternalId: ext, accountLabel: labelFromExternalId(ext), requestedOn: date!, amount: amount!,
-        currency, status, receivedAmount: received as string | null, receivedOn: recOn,
+        currency, status, receivedAmount: received as string | null, receivedOn: recOn, fx: fx as RowFx | null,
       });
     });
     return { kind: "payouts", rows, errors };
@@ -185,7 +205,9 @@ export function parseImport(text: string): Parsed {
     const status = STATUS_EXPENSE[(get(r, "status") || "pagado").toLowerCase()];
     const ref = get(r, "external_ref").replace(/^#/, "") || null;
     const refKey = ref ? `${firm.toLowerCase()}|${ref}` : null;
+    const fx = rowFx(r);
     const problems = [
+      fx === "NaN" && "dólar en pesos (fx_usd_clp) inválido",
       !firm && "falta la empresa",
       !date && "fecha inválida",
       (!amount || amount === "NaN") && "monto inválido",
@@ -196,7 +218,7 @@ export function parseImport(text: string): Parsed {
     ].filter(Boolean);
     if (refKey && !seenRefs.has(refKey)) seenRefs.set(refKey, line);
     if (problems.length) return errors.push({ line, message: problems.join("; ") });
-    rows.push({ line, firm, externalRef: ref, occurredOn: date!, category, description: get(r, "description") || null, amount: amount!, currency, status });
+    rows.push({ line, firm, externalRef: ref, occurredOn: date!, category, description: get(r, "description") || null, amount: amount!, currency, status, fx: fx as RowFx | null });
   });
   return { kind: "expenses", rows, errors };
 }
