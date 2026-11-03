@@ -13,6 +13,7 @@ import ExcelJS from "exceljs";
 import { parseImport } from "../src/domain/importer";
 import { buildWorkbook, expensesCsv, payoutsCsv } from "../src/lib/export";
 import { buildPreview, revertBatch, runImport } from "../src/lib/import";
+import { payoutDateFilter } from "../src/lib/payout-filters";
 import { Q } from "../src/lib/queries";
 
 const URL = process.env.POSTGREST_URL;
@@ -113,6 +114,16 @@ describe.skipIf(!URL)("API: consultas de la app", () => {
     const rec = await db.from("receipt_allocations").select(Q.payoutReceipt).eq("payout_id", payoutId);
     expect(rec.error).toBeNull();
     expect((await db.from("payouts").select(Q.paidPayouts).eq("status", "paid")).error).toBeNull();
+  });
+
+  it("payouts: filtro entre dos fechas (fecha de pago o, si no hay, de solicitud)", async () => {
+    const ids = async (desde?: string, hasta?: string) =>
+      ((await db.from("payouts").select("id").is("deleted_at", null).or(payoutDateFilter(desde, hasta)!)).data ?? []).map((p) => p.id as string);
+    expect(await ids("2026-10-20", "2026-10-20")).toContain(payoutId);
+    expect(await ids("2026-10-01", "2026-10-31")).toContain(payoutId);
+    expect(await ids(undefined, "2026-10-19")).not.toContain(payoutId);
+    expect(await ids("2026-10-21")).not.toContain(payoutId);
+    expect(payoutDateFilter("x", "")).toBeNull();
   });
 
   it("invitaciones (administrador) e is_admin", async () => {

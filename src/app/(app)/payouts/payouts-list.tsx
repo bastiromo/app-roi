@@ -32,7 +32,7 @@ const TONE: Record<PayoutListRow["status"], "neutral" | "credit" | "debit" | "es
 export function PayoutsList(props: {
   rows: PayoutListRow[];
   firms: { id: string; name: string }[];
-  filter: { empresa?: string; estado?: string };
+  filter: { empresa?: string; estado?: string; desde?: string; hasta?: string };
   totals: { gross: string; received: string; estimated: string | null; pending: string | null };
   saved: boolean;
 }) {
@@ -42,7 +42,7 @@ export function PayoutsList(props: {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<PayoutDeleteResult | null>(null);
   const [pending, startTransition] = useTransition();
-  const filtered = Boolean(filter.empresa || filter.estado);
+  const filtered = Boolean(filter.empresa || filter.estado || filter.desde || filter.hasta);
   const control = "h-10 rounded-full border border-line bg-surface px-3";
 
   const toggle = (id: string) =>
@@ -116,6 +116,14 @@ export function PayoutsList(props: {
               ))}
             </select>
           </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-ink-2">Desde</span>
+            <input type="date" name="desde" defaultValue={filter.desde} className={control} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-ink-2">Hasta</span>
+            <input type="date" name="hasta" defaultValue={filter.hasta} className={control} />
+          </label>
           <button className="h-10 rounded-full border border-line bg-surface px-4 text-sm font-medium hover:border-ink-3">Filtrar</button>
           {filtered && (
             <Link href="/payouts" className="h-10 px-2 text-sm leading-10 text-ink-2 hover:text-ink">
@@ -152,7 +160,7 @@ export function PayoutsList(props: {
         <section className="rounded-3xl border border-dashed border-line bg-surface p-6">
           <h2 className="font-semibold">{filtered ? "Ningún payout coincide con los filtros" : "Aún no hay payouts"}</h2>
           <p className="mt-2 text-sm text-ink-2">
-            {filtered ? "Prueba con otra empresa o estado." : "Registra tu primer retiro, o espera la carga de tu historial de Lucid."}
+            {filtered ? "Prueba con otra empresa, estado o rango de fechas." : "Registra tu primer retiro, o espera la carga de tu historial de Lucid."}
           </p>
         </section>
       ) : (

@@ -1,6 +1,7 @@
 import "server-only";
 import { d } from "@/domain/money";
 import { requireUser } from "@/lib/auth";
+import { payoutDateFilter } from "@/lib/payout-filters";
 import { Q } from "@/lib/queries";
 
 export interface PayoutRow {
@@ -49,11 +50,13 @@ async function receivedByPayout(ids: string[]) {
   return out;
 }
 
-export async function listPayouts(f: { empresa?: string; estado?: string } = {}) {
+export async function listPayouts(f: { empresa?: string; estado?: string; desde?: string; hasta?: string } = {}) {
   const { supabase } = await requireUser();
   let q = supabase.from("payouts").select(COLUMNS).is("deleted_at", null);
   if (f.empresa) q = q.eq("firm_id", f.empresa);
   if (f.estado) q = q.eq("status", f.estado);
+  const dates = payoutDateFilter(f.desde, f.hasta);
+  if (dates) q = q.or(dates);
   const { data, error } = await q.order("requested_on", { ascending: false }).order("created_at", { ascending: false }).returns<PayoutRow[]>();
   if (error) throw new Error(error.message);
   const rows = data ?? [];

@@ -7,7 +7,7 @@ import { PayoutsList } from "./payouts-list";
 
 export const metadata: Metadata = { title: "Payouts" };
 
-export default async function PayoutsPage({ searchParams }: { searchParams: Promise<{ empresa?: string; estado?: string; guardado?: string }> }) {
+export default async function PayoutsPage({ searchParams }: { searchParams: Promise<{ empresa?: string; estado?: string; desde?: string; hasta?: string; guardado?: string }> }) {
   const sp = await searchParams;
   const [rows, { firms }] = await Promise.all([listPayouts(sp), payoutFormOptions()]);
 
