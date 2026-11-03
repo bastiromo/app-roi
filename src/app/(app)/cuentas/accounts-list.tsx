@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { Notice, Tag } from "@/components/ui";
 import { BULK_STATUSES, PHASE_LABEL, STATUS_LABEL, STATUSES } from "@/domain/schemas";
 import { withdrawalStage } from "@/domain/withdrawals";
@@ -262,6 +262,7 @@ export function AccountsList(props: {
             rows={evaluations}
             initialTab={initialTab}
             kind="evaluations"
+            collapsible
             {...tableProps}
           />
         </>
@@ -280,8 +281,42 @@ interface TableProps {
 }
 
 /** Una sección (financiadas o evaluaciones) con pestañas por estado y su contador. */
-function AccountSection(props: TableProps & { title: string; hint: string; rows: AccountListRow[]; initialTab: Tab; kind: "funded" | "evaluations" }) {
+// Secciones ocultas: se recuerda en este dispositivo (sin el dato, se muestran)
+const hiddenListeners = new Set<() => void>();
+const hiddenKey = (kind: string) => `app-roi-ocultar-${kind}`;
+function readHidden(kind: string) {
+  try {
+    return localStorage.getItem(hiddenKey(kind)) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeHidden(kind: string, hidden: boolean) {
+  try {
+    if (hidden) localStorage.setItem(hiddenKey(kind), "1");
+    else localStorage.removeItem(hiddenKey(kind));
+  } catch {
+    // almacenamiento no disponible: se aplica solo mientras la página esté abierta
+  }
+  hiddenListeners.forEach((l) => l());
+}
+function useHidden(kind: string, enabled: boolean) {
+  const subscribe = (cb: () => void) => {
+    hiddenListeners.add(cb);
+    return () => hiddenListeners.delete(cb);
+  };
+  // Si el navegador no guarda el dato, este respaldo en memoria mantiene el estado de la página
+  const [fallback, setFallback] = useState(false);
+  const stored = useSyncExternalStore(subscribe, () => readHidden(kind), () => false);
+  const hidden = enabled && (stored || fallback);
+  return [hidden, (h: boolean) => (setFallback(h), writeHidden(kind, h))] as const;
+}
+
+function AccountSection(
+  props: TableProps & { title: string; hint: string; rows: AccountListRow[]; initialTab: Tab; kind: "funded" | "evaluations"; collapsible?: boolean },
+) {
   const { rows, kind } = props;
+  const [hidden, setHidden] = useHidden(kind, Boolean(props.collapsible));
   const counts = new Map<Status, number>();
   for (const r of rows) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
   const tabs: Tab[] = [...STATUSES.filter((s) => counts.get(s)), "todas"];
@@ -298,9 +333,10 @@ function AccountSection(props: TableProps & { title: string; hint: string; rows:
           <h2 id={id} className="text-xl font-semibold tracking-tight">
             {props.title} <span className="num text-ink-3">{rows.length}</span>
           </h2>
-          <p className="text-sm text-ink-2">{props.hint}</p>
+          <p className="text-sm text-ink-2">{hidden ? "Sección oculta." : props.hint}</p>
         </div>
-        {rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+        {rows.length > 0 && !hidden && (
           <div role="tablist" aria-label={`Estado de ${props.title.toLowerCase()}`} className="inline-flex max-w-full overflow-x-auto rounded-full bg-surface-2 p-1 shadow-[inset_0_0_0_1px_var(--line)]">
             {tabs.map((t) => (
               <button
@@ -317,14 +353,31 @@ function AccountSection(props: TableProps & { title: string; hint: string; rows:
             ))}
           </div>
         )}
+        {props.collapsible && (
+          <button
+            type="button"
+            onClick={() => setHidden(!hidden)}
+            aria-expanded={!hidden}
+            aria-controls={`${id}-contenido`}
+            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-medium text-ink-2 hover:border-ink-3 hover:text-ink"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${hidden ? "-rotate-90" : ""}`}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            {hidden ? "Mostrar" : "Ocultar"}
+          </button>
+        )}
+        </div>
       </div>
 
-      {rows.length === 0 ? (
+      {hidden ? null : rows.length === 0 ? (
         <p className="rounded-3xl border border-dashed border-line bg-surface px-5 py-4 text-sm text-ink-2">
           {kind === "funded" ? "Aún no tienes cuentas financiadas. Cuando apruebes una evaluación, aparece aquí." : "Sin evaluaciones."}
         </p>
       ) : (
-        <AccountTable {...props} rows={visible} kind={kind} />
+        <div id={`${id}-contenido`}>
+          <AccountTable {...props} rows={visible} kind={kind} />
+        </div>
       )}
     </section>
   );
