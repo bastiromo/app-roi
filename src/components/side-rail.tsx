@@ -7,6 +7,11 @@ import { SECONDARY } from "./nav";
 import { ThemeIconButton } from "./theme-switch";
 
 const ICONS: Record<string, ReactNode> = {
+  "/empresas": (
+    <>
+      <path d="M4 20V8l5-3v15M9 20V4l6 3v13M15 20V10l5 2v8M3 20h18" />
+    </>
+  ),
   "/importar": <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />,
   "/exportar": <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />,
   "/invitaciones": (

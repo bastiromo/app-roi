@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 /** Secciones principales (barra superior en computador). */
 export const PRIMARY: { label: string; href: string }[] = [
   { label: "Resumen", href: "/" },
-  { label: "Empresas", href: "/empresas" },
   { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", href: "/gastos" },
   { label: "Payouts", href: "/payouts" },
@@ -17,6 +16,7 @@ export const PRIMARY: { label: string; href: string }[] = [
 
 /** Herramientas (barra lateral flotante en computador; al final del menú en el celular). */
 export const SECONDARY: { label: string; href: string; adminOnly?: boolean }[] = [
+  { label: "Empresas", href: "/empresas" },
   { label: "Importar", href: "/importar" },
   { label: "Exportar", href: "/exportar" },
   { label: "Invitaciones", href: "/invitaciones", adminOnly: true },
