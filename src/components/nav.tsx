@@ -10,7 +10,7 @@ export const PRIMARY: { label: string; href: string }[] = [
   { label: "Cuentas", href: "/cuentas" },
   { label: "Gastos", href: "/gastos" },
   { label: "Payouts", href: "/payouts" },
-  { label: "Ventas de cripto", href: "/conversiones" },
+  // "Ventas de cripto" (/conversiones) está oculta del menú a pedido; la página y sus datos siguen existiendo.
   { label: "Simulador", href: "/simulador" },
 ];
 
