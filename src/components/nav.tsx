@@ -12,6 +12,7 @@ export const PRIMARY: { label: string; href: string }[] = [
   { label: "Payouts", href: "/payouts" },
   // "Ventas de cripto" (/conversiones) está oculta del menú a pedido; la página y sus datos siguen existiendo.
   { label: "Simulador", href: "/simulador" },
+  { label: "Consistencia", href: "/consistencia" },
 ];
 
 /** Herramientas (barra lateral flotante en computador; al final del menú en el celular). */
