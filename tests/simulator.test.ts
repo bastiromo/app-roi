@@ -80,3 +80,29 @@ describe("plan hacia el primer retiro (Apex 50K)", () => {
     expect(planToPayout({ ...base, results: ["1000", "1000", "500", "500", "500"] }).safetyNetOk).toBe(false); // 53.500 − 1.500 = 52.000
   });
 });
+
+import { runCycles } from "../src/domain/simulator";
+
+describe("seis ciclos con balance arrastrado (Apex 50K)", () => {
+  const W = ["1500", "2000", "2500", "2500", "3000", "3000"];
+  const run = (first: string[]) =>
+    runCycles({
+      start: "50000",
+      safetyNet: "52100",
+      cycles: [first, ["400", "400", "400", "400", "400"], ...[500, 500, 600, 600].map((v) => Array(5).fill(String(v)))].map((days, i) => ({ days, withdrawal: W[i] })),
+    });
+  it("método 1 (2.000 + 2.000): genera 17.600 y queda en 53.100 (1.000 sobre el Safety Net)", () => {
+    const r = run(["2000", "2000", "200", "200", "200"]);
+    expect(r.cycles[0].gain.toString()).toBe("4600");
+    expect(r.cycles[0].consistencyPct!.toFixed(2)).toBe("43.48");
+    expect(r.cycles.map((c) => c.balanceAfter.toString())).toEqual(Array(6).fill("53100"));
+    expect([r.totalGain.toString(), r.totalWithdrawn.toString(), r.leftInAccount.toString()]).toEqual(["17600", "14500", "3100"]);
+    expect(r.validDays).toBe(30);
+  });
+  it("método 2 (1.500 + 1.500): genera 16.600 y queda justo en el Safety Net", () => {
+    const r = run(["1500", "1500", "200", "200", "200"]);
+    expect(r.cycles.map((c) => c.balanceAfter.toString())).toEqual(Array(6).fill("52100"));
+    expect([r.totalGain.toString(), r.totalWithdrawn.toString(), r.leftInAccount.toString()]).toEqual(["16600", "14500", "2100"]);
+    expect(r.cycles.every((c) => c.consistencyOk && c.daysOk && c.safetyNetOk)).toBe(true);
+  });
+});

@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 import type { Decimal } from "@/domain/money";
-import { planToPayout, type PlanResult } from "@/domain/simulator";
+import { planToPayout, type PlanResult, runCycles } from "@/domain/simulator";
 import { formatMoney } from "@/lib/format";
 
 // Notas del usuario: plan Apex 50K Intraday hasta el primer retiro. Las tablas se calculan (no son texto fijo).
 const RULES = { start: "50000", withdrawal: "1500", safetyNet: "52100" };
 const A = planToPayout({ ...RULES, results: ["1500", "1500", "200", "200", "200"] });
 const B = planToPayout({ ...RULES, results: ["1500", "-1000", "1800", "450", "450", "450"] });
+
+// Dos métodos para los seis ciclos: solo cambia el arranque del ciclo 1
+const WITHDRAWALS = ["1500", "2000", "2500", "2500", "3000", "3000"];
+const REST = [400, 500, 500, 600, 600].map((v) => Array<string>(5).fill(String(v)));
+const method = (first: string[]) =>
+  runCycles({ start: RULES.start, safetyNet: RULES.safetyNet, cycles: [first, ...REST].map((days, i) => ({ days, withdrawal: WITHDRAWALS[i] })) });
+const M1 = method(["2000", "2000", "200", "200", "200"]);
+const M2 = method(["1500", "1500", "200", "200", "200"]);
+type Method = typeof M1;
 
 const usd0 = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 });
 const bal = (v: Decimal) => usd0.format(v.toNumber());
@@ -100,6 +109,53 @@ function Scenario({ name, title, plan }: { name: string; title: string; plan: Pl
   );
 }
 
+/** "2 × $2.000 + 3 × $200" o "5 × $400": los días del ciclo agrupados. */
+function daysText(days: Decimal[]) {
+  const groups: [string, number][] = [];
+  for (const v of days) {
+    const k = `$${usd0.format(v.toNumber())}`;
+    const last = groups[groups.length - 1];
+    if (last && last[0] === k) last[1]++;
+    else groups.push([k, 1]);
+  }
+  return groups.map(([k, n]) => `${n} × ${k}`).join(" + ");
+}
+
+function MethodCard({ name, start, m }: { name: string; start: string; m: Method }) {
+  return (
+    <section className="rounded-3xl border border-line bg-surface p-5 shadow-card md:p-6">
+      <h3 className="font-semibold">
+        {name} <span className="num ml-1 text-sm font-normal text-ink-2">Inicial: {start}</span>
+      </h3>
+      <table className="num mt-4 w-full text-sm">
+        <thead className="text-left text-ink-2">
+          <tr className="border-b border-line">
+            <th className="py-2 pr-2 font-medium">Ciclo</th>
+            <th className="py-2 pr-2 font-medium">Días</th>
+            <th className="py-2 pr-2 text-right font-medium">Ganancia</th>
+            <th className="py-2 pr-2 text-right font-medium">Retiro</th>
+            <th className="py-2 text-right font-medium">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {m.cycles.map((c) => (
+            <tr key={c.cycle} className="border-b border-line align-top last:border-0">
+              <td className="py-1.5 pr-2 font-semibold">{c.cycle}</td>
+              <td className="py-1.5 pr-2">
+                {daysText(c.days)}
+                <span className={`block text-xs ${c.consistencyOk ? "text-ink-3" : "text-debit"}`}>mejor día {pct(c.consistencyPct)}</span>
+              </td>
+              <td className="py-1.5 pr-2 text-right">{bal(c.gain)}</td>
+              <td className="py-1.5 pr-2 text-right font-semibold text-credit">{bal(c.withdrawal)}</td>
+              <td className="py-1.5 text-right">{bal(c.balanceAfter)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 const DLL: [string, string, string][] = [
   ["1", "US$0 – US$1.499", "US$1.000"],
   ["2", "US$1.500 – US$2.999", "US$1.000"],
@@ -182,6 +238,54 @@ export function ApexNotes() {
           <p role="note" className="mt-5 rounded-2xl bg-debit-bg px-4 py-3 text-sm font-medium text-debit">
             El DLL limita la pérdida de una sesión y pausa la operativa ese día; tocar el trailing drawdown puede cerrar la PA. Son reglas distintas.
           </p>
+        </section>
+
+        <h3 className="mt-4 text-lg font-semibold tracking-tight lg:col-span-2">
+          Los 6 ciclos: dos métodos
+          <span className="block text-sm font-normal text-ink-2">
+            Cambia solo el arranque del ciclo 1. El balance es el que queda después de cada retiro y pasa al ciclo siguiente.
+          </span>
+        </h3>
+        <MethodCard name="Método 1" start="$2.000 + $2.000" m={M1} />
+        <MethodCard name="Método 2" start="$1.500 + $1.500" m={M2} />
+
+        <section className="rounded-3xl border border-line bg-surface p-5 shadow-card md:p-6 lg:col-span-2">
+          <h3 className="font-semibold">Resumen comparativo</h3>
+          <table className="num mt-4 w-full text-sm">
+            <thead className="text-left text-ink-2">
+              <tr className="border-b border-line">
+                <th className="py-2 font-medium" />
+                <th className="py-2 text-right font-medium">Método 1</th>
+                <th className="py-2 text-right font-medium">Método 2</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ["Ganancia total generada", (m: Method) => `US$${bal(m.totalGain)}`],
+                  ["Total retirado", (m: Method) => `US$${bal(m.totalWithdrawn)}`],
+                  ["Queda en la cuenta", (m: Method) => `US$${bal(m.leftInAccount)}`],
+                  ["Balance final", (m: Method) => `US$${bal(m.finalBalance)}`],
+                  ["Días rentables", (m: Method) => String(m.validDays)],
+                ] as [string, (m: Method) => string][]
+              ).map(([label, f]) => (
+                <tr key={label} className="border-b border-line last:border-0">
+                  <td className="py-1.5 text-ink-2">{label}</td>
+                  <td className="py-1.5 pl-3 text-right font-semibold">{f(M1)}</td>
+                  <td className="py-1.5 pl-3 text-right font-semibold">{f(M2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <ul className="mt-4 list-disc space-y-1.5 pl-5 text-sm text-ink-2">
+            <li>
+              Los dos retiran lo mismo. El Método 1 exige generar US${bal(M1.totalGain.sub(M2.totalGain))} más y deja ese monto como
+              colchón sobre el Safety Net; el Método 2 queda justo en el Safety Net después de cada retiro.
+            </li>
+            <li>
+              El trailing drawdown se congela en <strong className="num text-ink">US$50.100</strong> al alcanzar los US$52.100.
+            </li>
+          </ul>
         </section>
       </div>
       <p className="text-xs text-ink-3">

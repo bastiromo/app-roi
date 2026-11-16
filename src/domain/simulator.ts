@@ -121,3 +121,52 @@ export function planToPayout(o: {
     safetyNetOk: balanceAfter.gte(d(o.safetyNet)),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Varios ciclos seguidos: el balance que sobra de un ciclo pasa al siguiente
+// ---------------------------------------------------------------------------
+export interface CycleResult {
+  cycle: number;
+  days: Decimal[];
+  gain: Decimal;
+  consistencyPct: Decimal | null;
+  consistencyOk: boolean;
+  validDays: number;
+  daysOk: boolean;
+  withdrawal: Decimal;
+  balanceBefore: Decimal; // antes del retiro
+  balanceAfter: Decimal;
+  safetyNetOk: boolean;
+}
+
+export function runCycles(o: { start: string; safetyNet: string; cycles: { days: string[]; withdrawal: string }[] }) {
+  let balance = o.start;
+  const cycles: CycleResult[] = o.cycles.map((c, i) => {
+    const p = planToPayout({ start: balance, results: c.days, withdrawal: c.withdrawal, safetyNet: o.safetyNet });
+    balance = p.balanceAfter.toString();
+    return {
+      cycle: i + 1,
+      days: p.days.map((x) => x.result),
+      gain: p.net,
+      consistencyPct: p.consistencyPct,
+      consistencyOk: p.consistencyOk,
+      validDays: p.validDays,
+      daysOk: p.daysOk,
+      withdrawal: d(c.withdrawal),
+      balanceBefore: p.finalBalance,
+      balanceAfter: p.balanceAfter,
+      safetyNetOk: p.safetyNetOk,
+    };
+  });
+  const sum = (f: (c: CycleResult) => Decimal) => cycles.reduce((t, c) => t.add(f(c)), d(0));
+  const finalBalance = d(balance);
+  return {
+    cycles,
+    totalGain: sum((c) => c.gain),
+    totalWithdrawn: sum((c) => c.withdrawal),
+    validDays: cycles.reduce((t, c) => t + c.validDays, 0),
+    finalBalance,
+    /** Lo que queda en la cuenta sobre el balance inicial (Safety Net + lo que sobre). */
+    leftInAccount: finalBalance.sub(d(o.start)),
+  };
+}
