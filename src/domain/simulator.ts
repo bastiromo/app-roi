@@ -68,3 +68,56 @@ export const APEX_50K: SimInput = {
   payoutsPerAccount: 1,
   payoutTable: ["1500", "2000", "2500", "2500", "3000", "3000"],
 };
+
+// ---------------------------------------------------------------------------
+// Plan hacia un retiro: días de trading → balance, consistencia y días válidos
+// ---------------------------------------------------------------------------
+export interface PlanResult {
+  days: { day: number; result: Decimal; balance: Decimal; valid: boolean }[];
+  finalBalance: Decimal;
+  net: Decimal;
+  bestDay: Decimal;
+  /** Mejor día / ganancia neta × 100 (null si no hay ganancia neta). Debe ser estrictamente menor al límite. */
+  consistencyPct: Decimal | null;
+  consistencyOk: boolean;
+  validDays: number; // días con al menos minDay de beneficio
+  daysOk: boolean;
+  balanceAfter: Decimal; // tras el retiro
+  safetyNetOk: boolean; // queda en o sobre el Safety Net
+}
+
+export function planToPayout(o: {
+  start: string;
+  results: string[];
+  withdrawal: string;
+  safetyNet: string;
+  minDay?: string;
+  minValidDays?: number;
+  consistencyLimitPct?: string;
+}): PlanResult {
+  const minDay = d(o.minDay ?? "200");
+  let balance = d(o.start);
+  let bestDay = d(0);
+  const days = o.results.map((r, i) => {
+    const result = d(r);
+    balance = balance.add(result);
+    if (result.gt(bestDay)) bestDay = result;
+    return { day: i + 1, result, balance, valid: result.gte(minDay) };
+  });
+  const net = balance.sub(d(o.start));
+  const consistencyPct = net.gt(0) ? bestDay.div(net).mul(100) : null;
+  const validDays = days.filter((x) => x.valid).length;
+  const balanceAfter = balance.sub(d(o.withdrawal));
+  return {
+    days,
+    finalBalance: balance,
+    net,
+    bestDay,
+    consistencyPct,
+    consistencyOk: consistencyPct !== null && consistencyPct.lt(d(o.consistencyLimitPct ?? "50")),
+    validDays,
+    daysOk: validDays >= (o.minValidDays ?? 5),
+    balanceAfter,
+    safetyNetOk: balanceAfter.gte(d(o.safetyNet)),
+  };
+}
