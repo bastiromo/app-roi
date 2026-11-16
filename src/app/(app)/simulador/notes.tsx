@@ -135,10 +135,6 @@ export function ApexNotes() {
             <dd className="text-right font-semibold">US$2.000</dd>
           </dl>
           <List items={["Intraday sin Daily Loss Limit (DLL)", "Se puede aprobar en un día", "Sin regla de consistencia", "Hasta 6 minis / 60 micros"]} />
-          <p className="mt-4 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-ink-2">
-            <strong className="text-ink">Full margin no significa arriesgar los US$50.000.</strong> El límite de supervivencia es el trailing drawdown
-            de US$2.000, e incluye ganancias y pérdidas flotantes.
-          </p>
         </Card>
 
         <Card step="Etapa 2" title="PA: colchón y retiro">
