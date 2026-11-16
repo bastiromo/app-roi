@@ -58,6 +58,8 @@ export function Simulator() {
   const [payouts, setPayouts] = useState(APEX_50K.payoutsPerAccount);
   const [packPrice, setPackPrice] = useState(APEX_50K.packPrice);
   const [activation, setActivation] = useState(APEX_50K.activationFee);
+  // Monto de cada retiro, editable (no siempre se retira el máximo)
+  const [table, setTable] = useState<string[]>(APEX_50K.payoutTable);
 
   const r = simulate({
     ...APEX_50K,
@@ -67,9 +69,15 @@ export function Simulator() {
     payoutsPerAccount: payouts,
     packPrice: money(packPrice, "0"),
     activationFee: money(activation, "0"),
+    payoutTable: table.map((v) => money(v, "0")),
   });
   const win = r.profit.gte(0);
-  const ciclos = APEX_50K.payoutTable.slice(0, r.payoutsPerAccount).map((v) => `$${Number(v).toLocaleString("es-CL")}`).join(" + ");
+  const isPreset = (values: string[]) => values.every((v, i) => money(table[i], "0") === v);
+  const presets: [string, string[]][] = [
+    ["Máximo", APEX_50K.payoutTable],
+    ["Todos $1.500", Array<string>(6).fill("1500")],
+    ["Mínimo $1.000", Array<string>(6).fill("1000")],
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -78,7 +86,45 @@ export function Simulator() {
         <Slider label="Packs de 5 evaluaciones" value={packs} min={1} max={10} onChange={setPacks} note={`${r.evaluations} evaluaciones`} />
         <Slider label="Evaluaciones aprobadas" value={r.approved} min={0} max={r.evaluations} onChange={setApproved} note="cada una paga activación" />
         <Slider label="Cuentas que consiguen retirar" value={r.withdrawing} min={0} max={r.approved} onChange={setWithdrawing} />
-        <Slider label="Retiros que cobra cada cuenta" value={r.payoutsPerAccount} min={1} max={APEX_50K.payoutTable.length} onChange={setPayouts} note={ciclos} />
+        <div>
+          <Slider label="Retiros que cobra cada cuenta" value={r.payoutsPerAccount} min={1} max={table.length} onChange={setPayouts} />
+          <fieldset className="mt-4">
+            <legend className="text-sm font-medium text-ink">Monto de cada retiro (USD)</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {presets.map(([label, values]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setTable(values)}
+                  className={`rounded-full border px-3 py-1 text-sm ${isPreset(values) ? "border-accent bg-accent text-accent-ink" : "border-line text-ink-2 hover:border-ink-3 hover:text-ink"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {table.map((v, i) => {
+                const used = i < r.payoutsPerAccount;
+                return (
+                  <label key={i} className={`text-xs ${used ? "text-ink-2" : "text-ink-3 opacity-50"}`}>
+                    Retiro {i + 1}
+                    <input
+                      inputMode="decimal"
+                      value={v}
+                      onChange={(e) => setTable((t) => t.map((x, j) => (j === i ? e.target.value : x)))}
+                      aria-label={`Monto del retiro ${i + 1} en USD`}
+                      className="num mt-1 h-10 w-full min-w-0 rounded-xl border border-line bg-surface px-2.5 text-sm text-ink"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-ink-3">
+              Se suman solo los retiros que cobra cada cuenta (los atenuados no cuentan). Cada cuenta retira{" "}
+              <span className="num font-medium text-ink-2">{formatMoney(r.perAccount, "usd")}</span>.
+            </p>
+          </fieldset>
+        </div>
 
         <details className="border-t border-line pt-4 text-sm">
           <summary className="cursor-pointer text-ink-2 hover:text-ink">Cambiar precios</summary>
